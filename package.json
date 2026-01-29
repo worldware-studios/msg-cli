@@ -1,0 +1,39 @@
+{
+  "name": "msg-cli",
+  "version": "0.0.1",
+  "description": "CLI for msg library",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "vitest",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/worldware-studios/msg-cli.git"
+  },
+  "author": "Joel Sahleen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/worldware-studios/msg-cli/issues"
+  },
+  "homepage": "https://github.com/worldware-studios/msg-cli#readme",
+  "bin": {
+    "msg": "./bin/run.js"
+  },
+  "oclif": {
+    "bin": "msg",
+    "commands": "./dist/commands",
+    "dirname": "msg",
+    "topicSeparator": " "
+  },
+  "dependencies": {
+    "@oclif/core": "^4.8.0",
+    "@worldware/msg": "^0.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
