@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file original="TestResource.json" source-language="en" target-language="zh" datatype="plaintext">
+    <body>
+      <trans-unit id="1" resname="test-1">
+        <source>This is test 1</source>
+        <target>这是测试 1</target>
+      </trans-unit>
+      <trans-unit id="2" resname="test-2">
+        <source>This is test 2</source>
+        <target>这是测试 2</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

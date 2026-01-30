@@ -4,8 +4,9 @@
   "description": "CLI for msg library",
   "main": "dist/index.js",
   "scripts": {
-    "test": "vitest",
-    "build": "tsc"
+    "test": "vitest run",
+    "build": "tsc",
+    "coverage": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -28,10 +29,12 @@
   },
   "dependencies": {
     "@oclif/core": "^4.8.0",
-    "@worldware/msg": "^0.5.4"
+    "@worldware/msg": "^0.5.4",
+    "fast-xml-parser": "^5.3.4"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
