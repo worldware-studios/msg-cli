@@ -38,7 +38,7 @@ Specification for  `msg-cli` utility functions.
 
 #### Export Utilities
 
-- **Find `MsgResource` files in a directory.** Find all the javascript and typescript files in a directory that have an `.msg.` substring in their filename just before the file extension. (For example: `example.msg.ts`) Return an array of file paths.
+- **Find `MsgResource` files in a directory.** Recursively find all the javascript and typescript files in a directory and its subdirectories that have an `.msg.` substring in their filename just before the file extension. (For example: `example.msg.ts`) Return an array of file paths.
 - **Import `MsgResource` objects from files.**. Given an array of msg file paths, verify that the files have `.msg.` in their filenames and then dynamically import the `MsgResource` objects exported from them. Group the resources by project, and store them in a Map that has `MsgProject` objects as keys and arrays of `MsgResource` resources that inject that project as values. Return the Map.
 - **Serialize `MsgResource` collections to xliff 1.2.** Given an array of `MsgResource` objects, serializ the array into a monolingual xliff 1.2 string. Preserve all notes and set the relevant xliff attributes using the attributes objects of each resource or message. Return a new Map that has `MsgProject` instances as keys and the xliff strings as values.
 - **Write an xliff 1.2 string to a file.** Given the serialized xliff 1.2 string and a file path, write the xliff string to the specified file path, with appropriate indentation. Return void. Files should be written asynchronously.
@@ -76,7 +76,7 @@ Specification for  `msg-cli` utility functions.
 
 | Name | Signature / shape | Description |
 |------|-------------------|-------------|
-| findMsgResourceFiles | `async (directory: string) => Promise<string[]>` | Finds all `MsgResource` files |
+| findMsgResourceFiles | `async (directory: string) => Promise<string[]>` | Recursively finds all `MsgResource` files |
 | importMsgResources | `async (filePaths: string[]) => Promise<Map<MsgProject,MsgResource[]>>` | Imports MsgResources from `.msg.` files |
 | resourcesToXliffString | `async (resources: MsgResource[]>) => Promise<Map<MsgProject, string>>` | Serializes MsgResource data to Xliff 1.2 |
 | writeXliff | `async (filePath: string, xliff:string) => Promise<void>` | Writes xliff 1.2 string to file |
@@ -184,7 +184,7 @@ All 9 utility functions from the API contract are implemented in `src/lib/utilit
 
 | Function | Description |
 |----------|-------------|
-| `findMsgResourceFiles` | Scans directory for `*.msg.ts` and `*.msg.js` files |
+| `findMsgResourceFiles` | Recursively scans directory and subdirectories for `*.msg.ts` and `*.msg.js` files |
 | `importMsgResources` | Dynamic imports from .msg. files, groups by MsgProject |
 | `resourcesToXliffString` | Serializes MsgResources to monolingual XLIFF 1.2 per project |
 | `writeXliff` | Writes XLIFF string to file (async) |

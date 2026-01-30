@@ -11,19 +11,22 @@ import { XMLParser } from "fast-xml-parser";
 const MSG_PATTERN = /\.msg\.(ts|js)$/i;
 
 /**
- * Finds all javascript and typescript files in a directory that have an `.msg.`
- * substring in their filename just before the file extension.
+ * Recursively finds all javascript and typescript files in a directory that have
+ * an `.msg.` substring in their filename just before the file extension.
  * @param directory - The directory path to search
  * @returns Promise resolving to array of file paths
  */
 export async function findMsgResourceFiles(
   directory: string
 ): Promise<string[]> {
-  const entries = await readdir(directory, { withFileTypes: true });
   const result: string[] = [];
+  const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
+    const fullPath = join(directory, entry.name);
     if (entry.isFile() && MSG_PATTERN.test(entry.name)) {
-      result.push(join(directory, entry.name));
+      result.push(fullPath);
+    } else if (entry.isDirectory()) {
+      result.push(...(await findMsgResourceFiles(fullPath)));
     }
   }
   return result;
@@ -51,7 +54,7 @@ export async function importMsgResources(
         `Failed to import MsgResource from ${filePath}: no valid export found`
       );
     }
-    const project = (resource as unknown as { _project: MsgProject })._project;
+    const project = resource.getProject();
     const projectName = project.project.name;
     let group = byProjectName.get(projectName);
     if (!group) {
@@ -77,7 +80,7 @@ export async function resourcesToXliffString(
 ): Promise<Map<MsgProject, string>> {
   const byProject = new Map<MsgProject, MsgResource[]>();
   for (const resource of resources) {
-    const project = (resource as unknown as { _project: MsgProject })._project;
+    const project = resource.getProject();
     let arr = byProject.get(project);
     if (!arr) {
       arr = [];

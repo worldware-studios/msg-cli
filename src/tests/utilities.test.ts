@@ -39,6 +39,7 @@ beforeEach(() => {
   parseOverride = null;
 });
 const MSG_FILES_DIR = join(FIXTURES_DIR, "msg-files");
+const MSG_FILES_NESTED_ONLY = join(FIXTURES_DIR, "msg-files-nested-only");
 const XLIFF_DIR = join(FIXTURES_DIR, "xliff");
 const OUTPUT_DIR = join(FIXTURES_DIR, "output");
 
@@ -50,6 +51,18 @@ describe("findMsgResourceFiles", () => {
     expect(result.some((p) => p.endsWith("Example.msg.ts"))).toBe(true);
     expect(result.some((p) => p.endsWith("Other.msg.js"))).toBe(true);
     expect(result.some((p) => p.endsWith("plain.ts"))).toBe(false);
+  });
+
+  test("recursively finds .msg. files in nested directories", async () => {
+    const result = await findMsgResourceFiles(MSG_FILES_DIR);
+    expect(result.some((p) => p.includes("Nested.msg.ts"))).toBe(true);
+    expect(result.some((p) => p.includes("Deep.msg.js"))).toBe(true);
+  });
+
+  test("finds .msg. files when they exist only in nested directories", async () => {
+    const result = await findMsgResourceFiles(MSG_FILES_NESTED_ONLY);
+    expect(result.length).toBe(1);
+    expect(result[0]).toContain("OnlyHere.msg.ts");
   });
 
   test("returns empty array when no .msg. files in directory", async () => {
