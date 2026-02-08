@@ -6,7 +6,8 @@ export default defineConfig({
       exclude: [
         '**/*.json',
         'src/tests/**',
-        '**/fixtures/**'
+        '**/fixtures/**',
+        'dist/**'
       ]
     }
   },
