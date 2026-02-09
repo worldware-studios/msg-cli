@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** The only command implemented is `init`. It creates directories, adds package.json fields and import aliases, adds npm scripts for future export/import workflows, and installs `@worldware/msg`.
+**Current status:** Implemented commands: `init` (scaffold i18n/l10n and config) and `create project` (template a new MsgProject file in i18n/projects).
 
 ## Installation
 
@@ -30,7 +30,7 @@ For project-local setup, run `msg init` in your project root to add msg and msg-
 
 ## Usage
 
-**Commands:** `init` is the only command currently implemented.
+**Commands:** `init`, `create project`.
 
 ### init
 
@@ -74,6 +74,46 @@ msg init -i
 6. If `tsconfig.json` exists, adds `compilerOptions.baseUrl` and `compilerOptions.paths` for the aliases.
 7. Installs the latest `@worldware/msg` as a dependency.
 
+### create project
+
+Create a new MsgProject file in the i18n projects directory. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
+
+```bash
+msg create project <projectName> <source> <targets...> [--extend <name>]
+```
+
+| Argument     | Required | Description                              |
+|-------------|----------|------------------------------------------|
+| `projectName` | Yes      | Name of the project (used as file name). |
+| `source`      | Yes      | Source locale (e.g. `en`).               |
+| `targets`     | Yes (≥1) | Target locale(s), e.g. `fr`, `de`, `es`. |
+
+| Flag        | Short | Description                    |
+|------------|-------|--------------------------------|
+| `--extend` | `-e`  | Extend an existing project.   |
+| `--help`   | `-h`  | Show help for create project.  |
+
+**Examples:**
+
+```bash
+# Create project myApp with source en and targets fr, de
+msg create project myApp en fr de
+
+# Extend an existing project
+msg create project extendedApp en de --extend base
+
+# Help
+msg create project -h
+```
+
+**Behavior:**
+
+- Writes the file to `i18n/projects/<projectName>.js` or `.ts` (TypeScript if `tsconfig.json` exists).
+- Uses ES module or CommonJS export based on `package.json` `"type"`.
+- Generates a translation loader that imports from `l10n/translations` using the relative path from `i18n/projects` (from `directories` in package.json).
+- With `--extend <name>`, merges target locales and pseudoLocale from the existing project.
+- Errors if the project name already exists, package.json is missing or invalid, or required directories are not configured.
+
 ## API Reference
 
 The CLI does not expose a programmatic API. For library usage, see [@worldware/msg](https://github.com/worldware-studios/msg).
@@ -87,7 +127,7 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 
 Source layout:
 
-- `src/commands/` — CLI commands (init).
+- `src/commands/` — CLI commands (init, create/project).
 - `src/lib/` — Shared utilities and init helpers.
 - `src/specs/` — Feature and command specs.
 - `src/tests/` — Vitest tests and fixtures.
