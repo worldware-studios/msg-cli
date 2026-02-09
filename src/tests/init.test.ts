@@ -13,9 +13,21 @@ const CLI_ROOT = join(__dirname, "..", "..");
 
 let shouldThrowWritePackageJson = false;
 let shouldThrowEnsureDirectories = false;
+/** Answers to return for interactive prompts (i18n then l10n). Empty string = use default. */
+let interactiveAnswers: string[] = [];
 
 vi.mock("child_process", () => ({
   spawnSync: vi.fn(() => ({ status: 0 })),
+}));
+
+vi.mock("readline", () => ({
+  createInterface: vi.fn(() => ({
+    question: vi.fn((_prompt: string, cb: (answer: string) => void) => {
+      const answer = interactiveAnswers.shift() ?? "";
+      cb(answer);
+    }),
+    close: vi.fn(),
+  })),
 }));
 
 vi.mock("../lib/init-helpers.js", async (importOriginal) => {
@@ -49,6 +61,7 @@ describe("Init command", () => {
   afterEach(() => {
     shouldThrowWritePackageJson = false;
     shouldThrowEnsureDirectories = false;
+    interactiveAnswers = [];
     process.chdir(origCwd);
     rmSync(tmp, { recursive: true, force: true });
     vi.clearAllMocks();
@@ -122,6 +135,49 @@ describe("Init command", () => {
       expect(ts.compilerOptions?.paths?.["#i18n/*"]).toEqual(["src/i18n/*"]);
       expect(ts.compilerOptions?.paths?.["#l10n/*"]).toEqual(["res/l10n/*"]);
       expect(ts.compilerOptions?.paths?.["#root/*"]).toEqual(["./*"]);
+    });
+  });
+
+  describe("Interactive", () => {
+    test("-i with default answers uses default i18n and l10n paths", async () => {
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
+      interactiveAnswers = ["", ""];
+
+      await Init.run(["-i"], CLI_ROOT);
+
+      expect(existsSync(join(tmp, "src", "i18n", "projects", ".gitkeep"))).toBe(true);
+      expect(existsSync(join(tmp, "res", "l10n", "xliff", ".gitkeep"))).toBe(true);
+      const pkg = JSON.parse(readFileSync(join(tmp, "package.json"), "utf-8"));
+      expect(pkg.directories?.i18n).toBe("src/i18n");
+      expect(pkg.directories?.l10n).toBe("res/l10n");
+    });
+
+    test("-i with custom answers uses prompted i18n and l10n paths", async () => {
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
+      interactiveAnswers = ["lib/i18n", "data/l10n"];
+
+      await Init.run(["-i"], CLI_ROOT);
+
+      expect(existsSync(join(tmp, "lib", "i18n", "projects", ".gitkeep"))).toBe(true);
+      expect(existsSync(join(tmp, "data", "l10n", "xliff", ".gitkeep"))).toBe(true);
+      const pkg = JSON.parse(readFileSync(join(tmp, "package.json"), "utf-8"));
+      expect(pkg.directories?.i18n).toBe("lib/i18n");
+      expect(pkg.directories?.l10n).toBe("data/l10n");
+      expect(pkg.imports?.["#i18n/*"]).toBe("lib/i18n/*");
+      expect(pkg.imports?.["#l10n/*"]).toBe("data/l10n/*");
+    });
+
+    test("-i --i18nDir custom/i18n prompts only for l10n", async () => {
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
+      interactiveAnswers = ["locales/l10n"];
+
+      await Init.run(["-i", "--i18nDir", "custom/i18n"], CLI_ROOT);
+
+      expect(existsSync(join(tmp, "custom", "i18n", "projects", ".gitkeep"))).toBe(true);
+      expect(existsSync(join(tmp, "locales", "l10n", "xliff", ".gitkeep"))).toBe(true);
+      const pkg = JSON.parse(readFileSync(join(tmp, "package.json"), "utf-8"));
+      expect(pkg.directories?.i18n).toBe("custom/i18n");
+      expect(pkg.directories?.l10n).toBe("locales/l10n");
     });
   });
 
