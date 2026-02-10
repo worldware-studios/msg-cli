@@ -87,7 +87,7 @@ describe("CreateResource command", () => {
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("import { MsgResource } from '@worldware/msg'");
-      expect(content).toContain("import project from '../projects/myProject'");
+      expect(content).toContain("import project from '../projects/myProject.js'");
       expect(content).toContain("title: 'messages'");
       expect(content).toContain("dir: 'ltr'");
       expect(content).toContain("export default MsgResource.create");
