@@ -90,7 +90,9 @@ export function generateMsgResourceContent(params: {
   isEsm: boolean;
 }): string {
   const { title, projectName, sourceLocale, dir, isEsm } = params;
-  const projectImport = `../projects/${projectName}`;
+  const projectImport = isEsm
+    ? `../projects/${projectName}.js`
+    : `../projects/${projectName}`;
   const messagesBlock = `  messages: [
     {
       key: 'example.message',
