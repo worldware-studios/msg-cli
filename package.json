@@ -1,6 +1,6 @@
 {
   "name": "@worldware/msg-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI for msg library",
   "main": "dist/commands/init.cjs",
   "module": "dist/commands/init.mjs",
@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@oclif/core": "^4.8.0",
-    "@worldware/msg": "^0.6.0",
+    "@worldware/msg": "^0.6.1",
     "fast-xml-parser": "^5.3.4"
   },
   "devDependencies": {
