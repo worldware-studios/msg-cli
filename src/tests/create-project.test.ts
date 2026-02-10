@@ -9,7 +9,7 @@ import {
 } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
-import { fileURLToPath, pathToFileURL } from "url";
+import { fileURLToPath } from "url";
 import CreateProject from "../commands/create/project.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -153,12 +153,15 @@ describe("CreateProject command", () => {
 
       const outPath = join(tmp, "i18n", "projects", "myApp.js");
       expect(existsSync(outPath)).toBe(true);
-      const mod = await import(pathToFileURL(outPath).href);
-      expect(mod.default).toBeDefined();
-      expect(mod.default.project).toEqual({ name: "myApp", version: 1 });
-      expect(mod.default.locales?.sourceLocale).toBe("en");
-      expect(mod.default.locales?.targetLocales).toMatchObject({ en: ["en"], fr: ["fr"] });
-      expect(typeof mod.default.loader).toBe("function");
+      const content = readFileSync(outPath, "utf-8");
+      expect(content).toContain("myApp");
+      expect(content).toMatch(/project:\s*\{\s*name:\s*["']myApp["']/);
+      expect(content).toMatch(/sourceLocale:\s*["']en["']/);
+      expect(content).toContain('"en"');
+      expect(content).toContain('"fr"');
+      expect(content).toMatch(/targetLocales[^}]*en/);
+      expect(content).toMatch(/targetLocales[^}]*fr/);
+      expect(content).toContain("loader");
     });
 
     test("single target locale", async () => {

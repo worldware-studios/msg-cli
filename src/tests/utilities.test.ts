@@ -184,6 +184,108 @@ describe("xliffDataToResourceTranslationData", () => {
     expect(result[0].messages!.length).toBe(1);
     expect(result[0].messages![0].key).toBe("translate-me");
   });
+
+  test("excludes trans-units where translate is false", async () => {
+    const parsed = {
+      xliff: {
+        file: {
+          "@_original": "Test.json",
+          "@_source-language": "en",
+          "@_target-language": "fr",
+          body: {
+            "trans-unit": [
+              { "@_id": "1", "@_resname": "keep", "@_translate": "yes", target: { "#text": "Keep" } },
+              { "@_id": "2", "@_resname": "skip", "@_translate": "false", target: { "#text": "Skip" } },
+            ],
+          },
+        },
+      },
+    };
+    const result = await xliffDataToResourceTranslationData(parsed);
+    expect(result.length).toBe(1);
+    expect(result[0].messages!.length).toBe(1);
+    expect(result[0].messages![0].key).toBe("keep");
+    expect(result[0].messages![0].value).toBe("Keep");
+  });
+
+  test("uses @_id as key when @_resname is missing", async () => {
+    const parsed = {
+      xliff: {
+        file: {
+          "@_original": "App.json",
+          "@_target-language": "de",
+          body: {
+            "trans-unit": { "@_id": "only-id", target: { "#text": "Wert" } },
+          },
+        },
+      },
+    };
+    const result = await xliffDataToResourceTranslationData(parsed);
+    expect(result.length).toBe(1);
+    expect(result[0].messages!.length).toBe(1);
+    expect(result[0].messages![0].key).toBe("only-id");
+    expect(result[0].messages![0].value).toBe("Wert");
+  });
+
+  test("handles target as string", async () => {
+    const parsed = {
+      xliff: {
+        file: {
+          "@_original": "Str.json",
+          "@_target-language": "es",
+          body: {
+            "trans-unit": { "@_id": "k", "@_resname": "k", target: "string value" },
+          },
+        },
+      },
+    };
+    const result = await xliffDataToResourceTranslationData(parsed);
+    expect(result.length).toBe(1);
+    expect(result[0].messages!.length).toBe(1);
+    expect(result[0].messages![0].value).toBe("string value");
+  });
+
+  test("uses source-language when target-language missing", async () => {
+    const parsed = {
+      xliff: {
+        file: {
+          "@_original": "OnlySource.json",
+          "@_source-language": "en",
+          body: { "trans-unit": [] },
+        },
+      },
+    };
+    const result = await xliffDataToResourceTranslationData(parsed);
+    expect(result.length).toBe(1);
+    expect(result[0].attributes!.lang).toBe("en");
+  });
+
+  test("handles multiple file elements", async () => {
+    const parsed = {
+      xliff: {
+        file: [
+          {
+            "@_original": "One.json",
+            "@_target-language": "fr",
+            body: { "trans-unit": { "@_id": "a", "@_resname": "a", target: { "#text": "A" } } },
+          },
+          {
+            "@_original": "Two.json",
+            "@_target-language": "de",
+            body: { "trans-unit": { "@_id": "b", "@_resname": "b", target: { "#text": "B" } } },
+          },
+        ],
+      },
+    };
+    const result = await xliffDataToResourceTranslationData(parsed);
+    expect(result.length).toBe(2);
+    expect(result[0].title).toBe("One");
+    expect(result[0].attributes!.lang).toBe("fr");
+    expect(result[0].messages![0].value).toBe("A");
+    expect(result[1].title).toBe("Two");
+    expect(result[1].attributes!.lang).toBe("de");
+    expect(result[1].messages![0].value).toBe("B");
+  });
 });
 
 describe("xliffToTranslationData", () => {

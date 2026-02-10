@@ -126,5 +126,11 @@ describe("create-project-helpers", () => {
       expect(result).toBeDefined();
       expect(result?.project?.name).toBe("base");
     });
+
+    test("returns undefined when file exists but import throws", async () => {
+      writeFileSync(join(tmp, "broken.js"), "throw new Error('load failed');");
+      const result = await importMsgProjectFile(tmp, "broken");
+      expect(result).toBeUndefined();
+    });
   });
 });

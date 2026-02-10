@@ -1,25 +1,37 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { createRequire } from "module";
 import { dirname, join } from "path";
-import { pathToFileURL } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import { loadPackageJsonForMsg } from "./init-helpers.js";
 
 /**
  * Dynamically import a module from a file URL.
- * Tries native import() first (works in ESM/Vitest); falls back to Function-based
- * import when running as compiled CJS (where import() would become require()).
+ * Tries native import() first; on VM/runner errors (e.g. Vitest "dynamic import
+ * callback was not specified") falls back to require() so CJS files load.
  */
 export async function dynamicImportFromUrl(
   url: string
 ): Promise<Record<string, unknown>> {
   try {
-    return await import(/* @vite-ignore */ url) as Promise<
+    return (await import(/* @vite-ignore */ url)) as Promise<
       Record<string, unknown>
     >;
-  } catch {
-    const load = new Function("url", "return import(url)") as (
-      url: string
-    ) => Promise<Record<string, unknown>>;
-    return load(url);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const useRequire =
+      msg.includes("dynamic import callback") || msg.includes("ERR_VM_DYNAMIC_IMPORT");
+    if (useRequire) {
+      try {
+        const path = url.startsWith("file:") ? fileURLToPath(url) : url;
+        const base = pathToFileURL(process.cwd()).href;
+        const req = createRequire(base);
+        const mod = req(path) as Record<string, unknown>;
+        return Promise.resolve(mod ?? {});
+      } catch {
+        // fall through to rethrow original
+      }
+    }
+    throw err;
   }
 }
 
