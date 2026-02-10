@@ -143,19 +143,21 @@ describe("create-resource-helpers", () => {
       expect(result).toEqual({ sourceLocale: "he-IL", dir: "rtl" });
     });
 
-    test("returns undefined when project file throws on import", async () => {
+    test("throws when project file throws on import", async () => {
       writeFileSync(join(tmp, "broken.js"), "throw new Error('bad');");
-      const result = await importMsgProjectForResource(tmp, "broken");
-      expect(result).toBeUndefined();
+      await expect(
+        importMsgProjectForResource(tmp, "broken")
+      ).rejects.toThrow(/could not be loaded|bad/);
     });
 
-    test("returns undefined when project has no sourceLocale", async () => {
+    test("throws when project has no sourceLocale", async () => {
       writeFileSync(
         join(tmp, "noLocale.js"),
         "module.exports = { locales: {} };"
       );
-      const result = await importMsgProjectForResource(tmp, "noLocale");
-      expect(result).toBeUndefined();
+      await expect(
+        importMsgProjectForResource(tmp, "noLocale")
+      ).rejects.toThrow(/sourceLocale|could not be loaded/);
     });
   });
 
