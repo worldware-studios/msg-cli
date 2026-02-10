@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join, relative } from "path";
 import { pathToFileURL } from "url";
+import { dynamicImportFromUrl } from "./create-resource-helpers.js";
 import type { PackageJson } from "./init-helpers.js";
 import { loadPackageJsonForMsg } from "./init-helpers.js";
 
@@ -43,7 +44,7 @@ export async function importMsgProjectFile(
     if (existsSync(p)) {
       try {
         const url = pathToFileURL(p).href;
-        const mod = await import(/* @vite-ignore */ url);
+        const mod = await dynamicImportFromUrl(url);
         return (mod?.default ?? mod) as MsgProjectFileData;
       } catch {
         return undefined;

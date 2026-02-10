@@ -72,6 +72,11 @@ describe("init-helpers", () => {
         rmSync(badPath, { force: true });
       }
     });
+
+    test("rethrows when file cannot be read (e.g. not found)", () => {
+      const nonexistent = join(tmpdir(), `msg-init-nonexistent-${Date.now()}`, "package.json");
+      expect(() => readPackageJson(nonexistent)).toThrow();
+    });
   });
 
   describe("loadPackageJsonForMsg", () => {
@@ -204,6 +209,14 @@ describe("init-helpers", () => {
       ensureDirectoriesWithGitkeep(tmp, "src/i18n", "res/l10n", true);
       expect(readFileSync(gitkeep, "utf-8")).toBe("");
     });
+
+    test("when force is false and .gitkeep already exists, does not overwrite", () => {
+      ensureDirectoriesWithGitkeep(tmp, "src/i18n", "res/l10n", false);
+      const gitkeep = join(tmp, "src", "i18n", "projects", ".gitkeep");
+      writeFileSync(gitkeep, "custom-content");
+      ensureDirectoriesWithGitkeep(tmp, "src/i18n", "res/l10n", false);
+      expect(readFileSync(gitkeep, "utf-8")).toBe("custom-content");
+    });
   });
 
   describe("addDirectoriesToPackageJson", () => {
@@ -313,6 +326,19 @@ describe("init-helpers", () => {
       expect(() => addTsconfigPaths(tsconfigPath, "src/i18n", "res/l10n")).toThrow(
         /Invalid tsconfig/
       );
+    });
+
+    test("preserves existing baseUrl when set", () => {
+      const tsconfigPath = join(tmp, "tsconfig.json");
+      writeFileSync(
+        tsconfigPath,
+        JSON.stringify({ compilerOptions: { baseUrl: "src" } }),
+        "utf-8"
+      );
+      addTsconfigPaths(tsconfigPath, "src/i18n", "res/l10n");
+      const content = JSON.parse(readFileSync(tsconfigPath, "utf-8"));
+      expect(content.compilerOptions.baseUrl).toBe("src");
+      expect(content.compilerOptions.paths["#i18n/*"]).toEqual(["src/i18n/*"]);
     });
   });
 
