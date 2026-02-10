@@ -169,7 +169,7 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("import { MsgResource } from '@worldware/msg'");
-      expect(content).toContain("import project from '../projects/myProject'");
+      expect(content).toContain("import project from '../projects/myProject.js'");
       expect(content).toContain("title: 'messages'");
       expect(content).toContain("lang: 'en'");
       expect(content).toContain("dir: 'ltr'");
@@ -225,7 +225,7 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("title: 't'");
-      expect(content).toContain("../projects/p");
+      expect(content).toContain("../projects/p.js");
     });
   });
 
