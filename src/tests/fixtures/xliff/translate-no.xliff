@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file original="MixedResource.json" source-language="en" target-language="zh" datatype="plaintext">
+    <body>
+      <trans-unit id="1" resname="translate-me" translate="yes">
+        <source>Translate this</source>
+        <target>翻译这个</target>
+      </trans-unit>
+      <trans-unit id="2" resname="skip-me" translate="no">
+        <source>Skip this</source>
+        <target>不要翻译</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

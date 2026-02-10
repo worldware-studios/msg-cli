@@ -4,7 +4,10 @@ export default defineConfig({
   test: {
     coverage: {
       exclude: [
-        '**/*.json'
+        '**/*.json',
+        'src/tests/**',
+        '**/fixtures/**',
+        'dist/**'
       ]
     }
   },
