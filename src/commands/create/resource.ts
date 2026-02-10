@@ -3,6 +3,7 @@ import { existsSync, unlinkSync } from "fs";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import {
+  dynamicImportFromUrl,
   generateMsgResourceContent,
   importMsgProjectForResource,
   readPackageJsonForCreateResource,
@@ -130,7 +131,7 @@ export default class CreateResource extends Command {
 
     try {
       const url = pathToFileURL(outPath).href;
-      await import(/* @vite-ignore */ url);
+      await dynamicImportFromUrl(url);
     } catch (err) {
       try {
         unlinkSync(outPath);

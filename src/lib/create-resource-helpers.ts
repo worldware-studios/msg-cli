@@ -3,6 +3,26 @@ import { dirname, join } from "path";
 import { pathToFileURL } from "url";
 import { loadPackageJsonForMsg } from "./init-helpers.js";
 
+/**
+ * Dynamically import a module from a file URL.
+ * Tries native import() first (works in ESM/Vitest); falls back to Function-based
+ * import when running as compiled CJS (where import() would become require()).
+ */
+export async function dynamicImportFromUrl(
+  url: string
+): Promise<Record<string, unknown>> {
+  try {
+    return await import(/* @vite-ignore */ url) as Promise<
+      Record<string, unknown>
+    >;
+  } catch {
+    const load = new Function("url", "return import(url)") as (
+      url: string
+    ) => Promise<Record<string, unknown>>;
+    return load(url);
+  }
+}
+
 /** Result of reading package.json for create-resource (i18n dir, module type). */
 export interface PackageJsonForCreateResource {
   i18nDir: string;
@@ -59,18 +79,23 @@ export async function importMsgProjectForResource(
     if (existsSync(p)) {
       try {
         const url = pathToFileURL(p).href;
-        const mod = await import(/* @vite-ignore */ url);
+        const mod = await dynamicImportFromUrl(url);
         const data = (mod?.default ?? mod) as MsgProjectForResource;
         const sourceLocale = data?.locales?.sourceLocale;
         if (!sourceLocale || typeof sourceLocale !== "string") {
-          return undefined;
+          throw new Error(
+            `Project file must export a default with locales.sourceLocale (got ${typeof data?.locales?.sourceLocale}).`
+          );
         }
         return {
           sourceLocale,
           dir: dirFromSourceLocale(sourceLocale),
         };
-      } catch {
-        return undefined;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `Project file '${projectName}${ext}' could not be loaded: ${message}`
+        );
       }
     }
   }
