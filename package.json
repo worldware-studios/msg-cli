@@ -1,6 +1,6 @@
 {
   "name": "@worldware/msg-cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "CLI for msg library",
   "main": "dist/index.js",
   "scripts": {
