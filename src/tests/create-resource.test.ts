@@ -11,6 +11,7 @@ import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath, pathToFileURL } from "url";
 import * as createResourceHelpers from "../lib/create-resource-helpers.js";
+import CreateProject from "../commands/create/project.js";
 import CreateResource from "../commands/create/resource.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,12 +19,14 @@ const CLI_ROOT = join(__dirname, "..", "..");
 
 /**
  * Writes a minimal package.json with directories and ensures i18n structure exists.
- * Creates a minimal project file that exports a MsgProject-like object for resource creation.
+ * Creates a minimal project file that exports a MsgProject-like object for resource creation,
+ * unless skipProjectFile is true (e.g. when the project will be created via create project command).
  */
 function setupValidProject(
   tmp: string,
   pkgOverrides: Record<string, unknown> = {},
-  projectContent?: string
+  projectContent?: string,
+  skipProjectFile?: boolean
 ) {
   const pkg = {
     name: "test-app",
@@ -41,12 +44,14 @@ function setupValidProject(
   const l10nTranslations = join(tmp, (pkg.directories as { l10n: string }).l10n, "translations");
   if (!existsSync(l10nTranslations)) mkdirSync(l10nTranslations, { recursive: true });
 
-  const defaultProject = `module.exports = {
+  if (!skipProjectFile) {
+    const defaultProject = `module.exports = {
   project: { name: 'myProject', version: 1 },
   locales: { sourceLocale: 'en', pseudoLocale: 'en-XA', targetLocales: { en: ['en'] } },
   loader: async () => ({ title: '', attributes: { lang: '', dir: '' }, notes: [], messages: [] })
 };`;
-  writeFileSync(join(projectsDir, "myProject.js"), projectContent ?? defaultProject);
+    writeFileSync(join(projectsDir, "myProject.js"), projectContent ?? defaultProject);
+  }
 }
 
 describe("CreateResource command", () => {
@@ -167,6 +172,21 @@ describe("CreateResource command", () => {
       const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
       const mod = await import(pathToFileURL(outPath).href);
       expect(mod.default).toBeDefined();
+    });
+
+    test("generated MsgResource imports generated MsgProject in ESM without TypeScript", async () => {
+      setupValidProject(tmp, { type: "module" }, undefined, true);
+      // No tsconfig: ESM .js only
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+      await CreateResource.run(["myApp", "messages"], CLI_ROOT);
+
+      const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
+      expect(existsSync(outPath)).toBe(true);
+      const mod = await import(pathToFileURL(outPath).href);
+      expect(mod.default).toBeDefined();
+      // Resource loaded without "MsgProject not found or could not be loaded"
+      expect(mod.default.attributes?.lang).toBe("en");
+      expect(mod.default.attributes?.dir).toBe("ltr");
     });
   });
 

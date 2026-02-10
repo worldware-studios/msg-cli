@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import CreateProject from "../commands/create/project.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -38,6 +45,18 @@ describe("CreateProject command", () => {
     mkdirSync(tmp, { recursive: true });
     origCwd = process.cwd();
     process.chdir(tmp);
+    // Symlink node_modules so generated project files can resolve @worldware/msg when imported
+    try {
+      const target = join(CLI_ROOT, "node_modules");
+      if (existsSync(target)) {
+        const link = join(tmp, "node_modules");
+        if (!existsSync(link)) {
+          symlinkSync(target, link, "dir");
+        }
+      }
+    } catch {
+      // Skip if symlink fails (e.g. sandbox)
+    }
   });
 
   afterEach(() => {
@@ -125,6 +144,21 @@ describe("CreateProject command", () => {
       await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
 
       expect(existsSync(join(tmp, "i18n", "projects", "myApp.js"))).toBe(true);
+    });
+
+    test("generated MsgProject file is importable in ESM without TypeScript", async () => {
+      setupValidProject(tmp, { type: "module" });
+      // No tsconfig.json so output is .js (ES module, not TypeScript)
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const outPath = join(tmp, "i18n", "projects", "myApp.js");
+      expect(existsSync(outPath)).toBe(true);
+      const mod = await import(pathToFileURL(outPath).href);
+      expect(mod.default).toBeDefined();
+      expect(mod.default.project).toEqual({ name: "myApp", version: 1 });
+      expect(mod.default.locales?.sourceLocale).toBe("en");
+      expect(mod.default.locales?.targetLocales).toMatchObject({ en: ["en"], fr: ["fr"] });
+      expect(typeof mod.default.loader).toBe("function");
     });
 
     test("single target locale", async () => {
