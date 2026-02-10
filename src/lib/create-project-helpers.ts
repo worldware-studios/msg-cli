@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join, relative } from "path";
 import { pathToFileURL } from "url";
 import type { PackageJson } from "./init-helpers.js";
-import { findPackageJsonPath, readPackageJson } from "./init-helpers.js";
+import { loadPackageJsonForMsg } from "./init-helpers.js";
 
 /** Minimal type for MsgProject-like data we read from an existing project file. */
 export interface MsgProjectFileData {
@@ -68,7 +68,7 @@ export function writeMsgProjectFile(filePath: string, content: string): void {
 
 /**
  * Loads package.json from the given directory (walking up to find it).
- * Prefers importing as JSON when possible; falls back to readPackageJson.
+ * Requires directories.i18n and directories.l10n.
  * @param cwd - Directory to start from (e.g. process.cwd())
  * @returns Parsed package.json with directories.i18n and directories.l10n
  * @throws Error if package.json not found or missing directories.i18n / directories.l10n
@@ -76,22 +76,6 @@ export function writeMsgProjectFile(filePath: string, content: string): void {
 export function loadPackageJsonForCreateProject(cwd: string): PackageJson & {
   directories: { i18n: string; l10n: string };
 } {
-  const pkgPath = findPackageJsonPath(cwd);
-  if (!pkgPath) {
-    throw new Error("package.json not found. Run this command from the project root.");
-  }
-  let pkg: PackageJson;
-  try {
-    pkg = readPackageJson(pkgPath);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "package.json could not be imported or parsed.";
-    throw new Error(msg);
-  }
-  const dirs = pkg.directories;
-  if (!dirs || typeof dirs !== "object" || !dirs.i18n || !dirs.l10n) {
-    throw new Error(
-      "package.json must contain directories.i18n and directories.l10n. Run 'msg init' first."
-    );
-  }
-  return pkg as PackageJson & { directories: { i18n: string; l10n: string } };
+  const ctx = loadPackageJsonForMsg(cwd, { requireL10n: true });
+  return ctx.pkg as PackageJson & { directories: { i18n: string; l10n: string } };
 }

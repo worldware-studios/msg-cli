@@ -54,6 +54,63 @@ export function readPackageJson(pkgPath: string): PackageJson {
   }
 }
 
+/** Result of loadPackageJsonForMsg - shared package.json context for msg commands. */
+export interface MsgPackageContext {
+  pkgPath: string;
+  rootDir: string;
+  pkg: PackageJson;
+  i18nDir: string;
+  l10nDir?: string;
+  isEsm: boolean;
+  useTypeScript: boolean;
+}
+
+/**
+ * Loads package.json for msg commands (create project, create resource, etc.).
+ * Finds package.json from cwd, validates directories, and derives module info.
+ * @param cwd - Directory to start from (e.g. process.cwd())
+ * @param options - requireL10n: if true, directories.l10n must exist (default: false)
+ * @returns Package context with pkgPath, rootDir, pkg, i18nDir, l10nDir?, isEsm, useTypeScript
+ * @throws Error if package.json not found or required directories missing
+ */
+export function loadPackageJsonForMsg(
+  cwd: string,
+  options?: { requireL10n?: boolean }
+): MsgPackageContext {
+  const pkgPath = findPackageJsonPath(cwd);
+  if (!pkgPath) {
+    throw new Error("package.json not found. Run this command from the project root.");
+  }
+  let pkg: PackageJson;
+  try {
+    pkg = readPackageJson(pkgPath);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "package.json could not be parsed.";
+    throw new Error(msg);
+  }
+  const dirs = pkg.directories;
+  if (!dirs || typeof dirs !== "object" || !dirs.i18n) {
+    throw new Error("package.json must contain directories.i18n. Run 'msg init' first.");
+  }
+  if (options?.requireL10n && !dirs.l10n) {
+    throw new Error(
+      "package.json must contain directories.i18n and directories.l10n. Run 'msg init' first."
+    );
+  }
+  const rootDir = dirname(pkgPath);
+  const useTypeScript = existsSync(join(rootDir, "tsconfig.json"));
+  const isEsm = (pkg as { type?: string }).type === "module";
+  return {
+    pkgPath,
+    rootDir,
+    pkg,
+    i18nDir: dirs.i18n,
+    l10nDir: dirs.l10n,
+    isEsm,
+    useTypeScript,
+  };
+}
+
 /**
  * Writes package.json to disk with trailing newline.
  * @param pkgPath - Absolute path to package.json

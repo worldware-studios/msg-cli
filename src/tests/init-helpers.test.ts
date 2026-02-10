@@ -14,6 +14,7 @@ import {
   ensureDirectoriesWithGitkeep,
   findPackageJsonPath,
   isAlreadyInitialized,
+  loadPackageJsonForMsg,
   readPackageJson,
   validatePaths,
   writePackageJson,
@@ -70,6 +71,57 @@ describe("init-helpers", () => {
       } finally {
         rmSync(badPath, { force: true });
       }
+    });
+  });
+
+  describe("loadPackageJsonForMsg", () => {
+    let tmp: string;
+
+    beforeEach(() => {
+      tmp = join(tmpdir(), `msg-init-loadpkg-${Date.now()}`);
+      mkdirSync(tmp, { recursive: true });
+    });
+
+    afterEach(() => {
+      rmSync(tmp, { recursive: true, force: true });
+    });
+
+    test("returns context with i18nDir, isEsm, useTypeScript when valid", () => {
+      writeFileSync(
+        join(tmp, "package.json"),
+        JSON.stringify({
+          name: "app",
+          type: "module",
+          directories: { i18n: "src/i18n", l10n: "res/l10n" },
+        })
+      );
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+      const ctx = loadPackageJsonForMsg(tmp);
+      expect(ctx.i18nDir).toBe("src/i18n");
+      expect(ctx.l10nDir).toBe("res/l10n");
+      expect(ctx.isEsm).toBe(true);
+      expect(ctx.useTypeScript).toBe(true);
+      expect(ctx.pkgPath).toBe(join(tmp, "package.json"));
+      expect(ctx.rootDir).toBe(tmp);
+    });
+
+    test("requireL10n validates l10n exists", () => {
+      writeFileSync(
+        join(tmp, "package.json"),
+        JSON.stringify({ name: "app", directories: { i18n: "i18n" } })
+      );
+      expect(() => loadPackageJsonForMsg(tmp, { requireL10n: true })).toThrow(
+        /directories\.i18n and directories\.l10n|Run 'msg init'/
+      );
+    });
+
+    test("without requireL10n accepts i18n only", () => {
+      writeFileSync(
+        join(tmp, "package.json"),
+        JSON.stringify({ name: "app", directories: { i18n: "i18n" } })
+      );
+      const ctx = loadPackageJsonForMsg(tmp);
+      expect(ctx.i18nDir).toBe("i18n");
     });
   });
 

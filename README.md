@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** Implemented commands: `init` (scaffold i18n/l10n and config) and `create project` (template a new MsgProject file in i18n/projects).
+**Current status:** Implemented commands: `init` (scaffold i18n/l10n and config), `create project` (template a new MsgProject file in i18n/projects), and `create resource` (template a new MsgResource file in i18n/resources).
 
 ## Installation
 
@@ -30,7 +30,7 @@ For project-local setup, run `msg init` in your project root to add msg and msg-
 
 ## Usage
 
-**Commands:** `init`, `create project`.
+**Commands:** `init`, `create project`, `create resource`.
 
 ### init
 
@@ -114,6 +114,46 @@ msg create project -h
 - With `--extend <name>`, merges target locales and pseudoLocale from the existing project.
 - Errors if the project name already exists, package.json is missing or invalid, or required directories are not configured.
 
+### create resource
+
+Create a new MsgResource file in the i18n resources directory. Requires `msg init` and a project file in `i18n/projects` (run `msg create project` first).
+
+```bash
+msg create resource <projectName> <title> [-f] [-e]
+```
+
+| Argument     | Required | Description                                        |
+|-------------|----------|----------------------------------------------------|
+| `projectName` | Yes      | Name of the project to import in the MsgResource.  |
+| `title`       | Yes      | Title of the resource and file name (e.g. `messages` → `messages.msg.js`). |
+
+| Flag        | Short | Description                              |
+|------------|-------|------------------------------------------|
+| `--force`  | `-f`  | Overwrite an existing resource file.     |
+| `--edit`   | `-e`  | Open the file for editing after creation.|
+| `--help`   | `-h`  | Show help for create resource.           |
+
+**Examples:**
+
+```bash
+# Create resource messages for project myProject
+msg create resource myProject messages
+
+# Overwrite existing resource
+msg create resource myProject messages --force
+
+# Create and open in editor
+msg create resource myProject messages --edit
+```
+
+**Behavior:**
+
+- Writes the file to `i18n/resources/<title>.msg.js` or `.msg.ts` (TypeScript if `tsconfig.json` exists).
+- Uses ES module or CommonJS export based on `package.json` `"type"`.
+- Sets `lang` from the project's `sourceLocale` and `dir` to `rtl` for Arabic/Hebrew, `ltr` otherwise.
+- Includes a minimal example message. Validates that the generated file is importable.
+- Errors if i18n/projects or i18n/resources does not exist, the project is not found, or the resource file already exists (unless `--force`).
+
 ## API Reference
 
 The CLI does not expose a programmatic API. For library usage, see [@worldware/msg](https://github.com/worldware-studios/msg).
@@ -127,8 +167,8 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 
 Source layout:
 
-- `src/commands/` — CLI commands (init, create/project).
-- `src/lib/` — Shared utilities and init helpers.
+- `src/commands/` — CLI commands (init, create/project, create/resource).
+- `src/lib/` — Shared utilities, init helpers, create-project helpers, and create-resource helpers.
 - `src/specs/` — Feature and command specs.
 - `src/tests/` — Vitest tests and fixtures.
 
