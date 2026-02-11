@@ -241,8 +241,8 @@ describe("init-helpers", () => {
   describe("addImportAliasesToPackageJson", () => {
     test("adds #i18n/*, #l10n/*, #root/*", () => {
       const pkg = addImportAliasesToPackageJson({ name: "x" }, "src/i18n", "res/l10n");
-      expect(pkg.imports?.["#i18n/*"]).toBe("src/i18n/*");
-      expect(pkg.imports?.["#l10n/*"]).toBe("res/l10n/*");
+      expect(pkg.imports?.["#i18n/*"]).toBe("./src/i18n/*");
+      expect(pkg.imports?.["#l10n/*"]).toBe("./res/l10n/*");
       expect(pkg.imports?.["#root/*"]).toBe("./*");
     });
   });
@@ -250,14 +250,14 @@ describe("init-helpers", () => {
   describe("addScriptsToPackageJson", () => {
     test("adds i18n-export and l10n-import", () => {
       const pkg = addScriptsToPackageJson({ name: "x" });
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export:resources");
-      expect(pkg.scripts?.["l10n-import"]).toBe("msg import:translations");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
+      expect(pkg.scripts?.["l10n-import"]).toBe("msg import translations");
     });
 
     test("preserves existing scripts", () => {
       const pkg = addScriptsToPackageJson({ scripts: { build: "tsc" } });
       expect(pkg.scripts?.build).toBe("tsc");
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export:resources");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
     });
   });
 
@@ -315,8 +315,8 @@ describe("init-helpers", () => {
       addTsconfigPaths(tsconfigPath, "src/i18n", "res/l10n");
       const content = JSON.parse(readFileSync(tsconfigPath, "utf-8"));
       expect(content.compilerOptions.baseUrl).toBe(".");
-      expect(content.compilerOptions.paths["#i18n/*"]).toEqual(["src/i18n/*"]);
-      expect(content.compilerOptions.paths["#l10n/*"]).toEqual(["res/l10n/*"]);
+      expect(content.compilerOptions.paths["#i18n/*"]).toEqual(["./src/i18n/*"]);
+      expect(content.compilerOptions.paths["#l10n/*"]).toEqual(["./res/l10n/*"]);
       expect(content.compilerOptions.paths["#root/*"]).toEqual(["./*"]);
     });
 
@@ -338,7 +338,7 @@ describe("init-helpers", () => {
       addTsconfigPaths(tsconfigPath, "src/i18n", "res/l10n");
       const content = JSON.parse(readFileSync(tsconfigPath, "utf-8"));
       expect(content.compilerOptions.baseUrl).toBe("src");
-      expect(content.compilerOptions.paths["#i18n/*"]).toEqual(["src/i18n/*"]);
+      expect(content.compilerOptions.paths["#i18n/*"]).toEqual(["./src/i18n/*"]);
     });
   });
 

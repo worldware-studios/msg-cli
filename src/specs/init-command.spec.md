@@ -53,7 +53,7 @@ Running the `init` command creates the following entries under `imports` in the 
     "#i18n/*": "./<i18n directory>/*",
     "#l10n/*": "./<l10n directory>/*",
     "#root/*": "./*"
-  },
+  }
 }
 ```
 
@@ -62,10 +62,10 @@ This creates an alias that allows shorthand imports such as `import project from
 ```json
 {
   "compilerOptions": {
-    "baseUrl": ".", // Base directory for resolving non-relative modules
+    "baseUrl": ".",
     "paths": {
-      "#utils/*": ["./src/utils/*"],
-      "#components/*": ["./src/components/*"],
+      "#i18n/*": ["./<i18n directory>/*"],
+      "#l10n/*": ["./<l10n directory>/*"],
       "#root/*": ["./*"]
     }
   }
@@ -79,8 +79,8 @@ The init command adds the following scripts to package.json under the scripts se
 ```json
 {
   "scripts": {
-    "i18n-export": "msg export:resources",
-    "l10n-import": "msg import:translations"
+    "i18n-export": "msg export resources",
+    "l10n-import": "msg import translations"
   }
 }
 ```

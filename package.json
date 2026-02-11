@@ -1,6 +1,6 @@
 {
   "name": "@worldware/msg-cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI for msg library",
   "main": "dist/commands/init.cjs",
   "module": "dist/commands/init.mjs",
