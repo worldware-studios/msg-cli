@@ -50,8 +50,8 @@ Running the `init` command creates the following entries under `imports` in the 
 ```json
 {
   "imports": {
-    "#i18n/*": "path/to/i18n/dir",
-    "#l10n/*": "path/to/l10n/dir",
+    "#i18n/*": "./<i18n directory>/*",
+    "#l10n/*": "./<l10n directory>/*",
     "#root/*": "./*"
   },
 }

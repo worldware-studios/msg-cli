@@ -223,8 +223,8 @@ export function addImportAliasesToPackageJson(
 ): PackageJson {
   const imports = {
     ...pkg.imports,
-    "#i18n/*": `${i18nDir}/*`,
-    "#l10n/*": `${l10nDir}/*`,
+    "#i18n/*": `./${i18nDir}/*`,
+    "#l10n/*": `./${l10nDir}/*`,
     "#root/*": "./*",
   };
   return { ...pkg, imports };
@@ -236,8 +236,8 @@ export function addImportAliasesToPackageJson(
 export function addScriptsToPackageJson(pkg: PackageJson): PackageJson {
   const scripts = {
     ...pkg.scripts,
-    "i18n-export": "msg export:resources",
-    "l10n-import": "msg import:translations",
+    "i18n-export": "msg export resources",
+    "l10n-import": "msg import translations",
   };
   return { ...pkg, scripts };
 }
@@ -266,8 +266,8 @@ export function addTsconfigPaths(
   co.baseUrl = co.baseUrl ?? ".";
   co.paths = {
     ...co.paths,
-    "#i18n/*": [`${i18nDir}/*`],
-    "#l10n/*": [`${l10nDir}/*`],
+    "#i18n/*": [`./${i18nDir}/*`],
+    "#l10n/*": [`./${l10nDir}/*`],
     "#root/*": ["./*"],
   };
   writeFileSync(tsconfigPath, JSON.stringify(config, null, 2) + "\n", "utf-8");
