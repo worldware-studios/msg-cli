@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** Implemented commands: `init` (scaffold i18n/l10n and config), `create project` (template a new MsgProject file in i18n/projects), and `create resource` (template a new MsgResource file in i18n/resources).
+**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources).
 
 ## Installation
 
@@ -17,7 +17,7 @@ npm install -g @worldware/msg-cli
 Or use via `npx`:
 
 ```bash
-npx @worldware/msg-cli <command>
+npx msg <command>
 ```
 
 For project-local setup, run `msg init` in your project root to add msg and msg-cli as dependencies and scaffold directories and config.
@@ -44,7 +44,7 @@ msg init
 |------|-------------|
 | `-h`, `--help` | Show help for the init command. |
 | `-i` | Interactive: prompt for i18n and l10n directory paths. |
-| `-f`, `--force` | Force a clean run; overwrite or re-apply existing msg setup. |
+| `-f`, `--force` | Force clean install; overwrite existing msg setup. |
 | `--i18nDir <path>` | Relative path for the i18n directory (default: `src/i18n`). |
 | `--l10nDir <path>` | Relative path for the l10n directory (default: `res/l10n`). |
 
@@ -70,7 +70,7 @@ msg init -i
 2. Adds `.gitkeep` in each leaf directory.
 3. Adds `directories.i18n`, `directories.l10n`, and `directories.root` to `package.json`.
 4. Adds import aliases `#i18n/*`, `#l10n/*`, and `#root/*` to `package.json`.
-5. Adds scripts `i18n-export` and `l10n-import` (pointing to `msg export:resources` and `msg import:translations`) for when those commands are available.
+5. Adds scripts `i18n-export` and `l10n-import` (pointing to `msg export resources` and `msg import translations`) for when those commands are available.
 6. If `tsconfig.json` exists, adds `compilerOptions.baseUrl` and `compilerOptions.paths` for the aliases.
 7. Installs the latest `@worldware/msg` as a dependency.
 
@@ -160,6 +160,7 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 
 ## Development
 
+- **Repository:** [github.com/worldware-studios/msg-cli](https://github.com/worldware-studios/msg-cli)
 - **Setup:** `npm install`
 - **Build:** `npm run build`
 - **Tests:** `npm run test`
