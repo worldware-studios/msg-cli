@@ -258,6 +258,13 @@ describe("CreateResource command", () => {
       );
     });
 
+    test("whitespace-only projectName fails", async () => {
+      setupValidProject(tmp);
+      await expect(
+        CreateResource.run(["  ", "messages"], CLI_ROOT)
+      ).rejects.toThrow(/projectName is required/);
+    });
+
     test("missing title fails", async () => {
       setupValidProject(tmp);
       await expect(CreateResource.run(["myProject"], CLI_ROOT)).rejects.toThrow(
@@ -266,6 +273,13 @@ describe("CreateResource command", () => {
       await expect(CreateResource.run(["myProject", ""], CLI_ROOT)).rejects.toThrow(
         /title is required/
       );
+    });
+
+    test("whitespace-only title fails", async () => {
+      setupValidProject(tmp);
+      await expect(
+        CreateResource.run(["myProject", "  \t"], CLI_ROOT)
+      ).rejects.toThrow(/title is required/);
     });
 
     test("i18n directory does not exist fails", async () => {
@@ -316,6 +330,19 @@ describe("CreateResource command", () => {
       await expect(
         CreateResource.run(["nonexistent", "messages"], CLI_ROOT)
       ).rejects.toThrow(/not found|could not be loaded/);
+    });
+
+    test("project file with non-string sourceLocale (e.g. number) fails", async () => {
+      setupValidProject(tmp);
+      const badProject = `module.exports = {
+  project: { name: 'bad' },
+  locales: { sourceLocale: 42 },
+  loader: async () => ({ title: '', attributes: {}, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "bad.js"), badProject);
+      await expect(
+        CreateResource.run(["bad", "messages"], CLI_ROOT)
+      ).rejects.toThrow(/sourceLocale|could not be loaded|got number/);
     });
 
     test("resource file exists without --force fails", async () => {
@@ -385,16 +412,34 @@ describe("CreateResource command", () => {
       const origVisual = process.env.VISUAL;
       delete process.env.EDITOR;
       delete process.env.VISUAL;
+      const warnSpy = vi.spyOn(CreateResource.prototype, "warn");
       try {
         setupValidProject(tmp);
-        const warnSpy = vi.spyOn(CreateResource.prototype, "warn");
         await CreateResource.run(["myProject", "messages", "--edit"], CLI_ROOT);
         expect(warnSpy).toHaveBeenCalledWith(
           "EDITOR or VISUAL not set. Open the file manually."
         );
       } finally {
+        warnSpy.mockRestore();
         if (origEditor !== undefined) process.env.EDITOR = origEditor;
         if (origVisual !== undefined) process.env.VISUAL = origVisual;
+      }
+    });
+
+    test("--edit with EDITOR set completes without warning", async () => {
+      const origEditor = process.env.EDITOR;
+      process.env.EDITOR = "cat";
+      const warnSpy = vi.spyOn(CreateResource.prototype, "warn");
+      try {
+        setupValidProject(tmp);
+        await CreateResource.run(["myProject", "messages", "--edit"], CLI_ROOT);
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.js"))).toBe(
+          true
+        );
+      } finally {
+        process.env.EDITOR = origEditor;
+        warnSpy.mockRestore();
       }
     });
   });

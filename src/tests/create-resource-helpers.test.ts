@@ -3,7 +3,9 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
+import { pathToFileURL } from "url";
 import {
+  dynamicImportFromUrl,
   readPackageJsonForCreateResource,
   importMsgProjectForResource,
   generateMsgResourceContent,
@@ -77,6 +79,13 @@ describe("create-resource-helpers", () => {
       writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
       expect(() => readPackageJsonForCreateResource(tmp)).toThrow(
         /directories\.i18n|Run 'msg init'|init/
+      );
+    });
+
+    test("throws when package.json is invalid JSON", () => {
+      writeFileSync(join(tmp, "package.json"), "{ invalid json");
+      expect(() => readPackageJsonForCreateResource(tmp)).toThrow(
+        /Invalid package\.json|package\.json could not/
       );
     });
   });
@@ -158,6 +167,16 @@ describe("create-resource-helpers", () => {
       await expect(
         importMsgProjectForResource(tmp, "noLocale")
       ).rejects.toThrow(/sourceLocale|could not be loaded/);
+    });
+
+    test("throws when sourceLocale is not a string (e.g. number)", async () => {
+      writeFileSync(
+        join(tmp, "badLocale.js"),
+        "module.exports = { locales: { sourceLocale: 42 } };"
+      );
+      await expect(
+        importMsgProjectForResource(tmp, "badLocale")
+      ).rejects.toThrow(/sourceLocale|must export.*locales\.sourceLocale|got number/);
     });
   });
 
@@ -249,6 +268,47 @@ describe("create-resource-helpers", () => {
       writeMsgResourceFile(filePath, content);
       expect(existsSync(filePath)).toBe(true);
       expect(readFileSync(filePath, "utf-8")).toBe(content);
+    });
+
+    test("overwrites existing file with new content", () => {
+      const filePath = join(tmp, "existing.msg.js");
+      writeFileSync(filePath, "old content", "utf-8");
+      writeMsgResourceFile(filePath, "new content");
+      expect(readFileSync(filePath, "utf-8")).toBe("new content");
+    });
+  });
+
+  describe("dynamicImportFromUrl", () => {
+    let tmp: string;
+
+    beforeEach(() => {
+      tmp = join(tmpdir(), `msg-cr-dynamic-${Date.now()}`);
+      mkdirSync(tmp, { recursive: true });
+    });
+
+    afterEach(() => {
+      rmSync(tmp, { recursive: true, force: true });
+    });
+
+    test("imports CJS file and returns module", async () => {
+      const cjsPath = join(tmp, "mod.js");
+      writeFileSync(
+        cjsPath,
+        "module.exports = { foo: 1, bar: 2 };",
+        "utf-8"
+      );
+      const url = pathToFileURL(cjsPath).href;
+      const mod = await dynamicImportFromUrl(url);
+      expect(mod).toBeDefined();
+      expect(mod.foo).toBe(1);
+      expect(mod.bar).toBe(2);
+    });
+
+    test("throws when file fails to load", async () => {
+      const badPath = join(tmp, "syntax-error.js");
+      writeFileSync(badPath, "{{{ invalid", "utf-8");
+      const url = pathToFileURL(badPath).href;
+      await expect(dynamicImportFromUrl(url)).rejects.toThrow();
     });
   });
 });

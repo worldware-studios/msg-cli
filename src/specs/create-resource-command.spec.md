@@ -20,7 +20,7 @@ export default MsgResource.create({
       key: 'example.message',
       value: 'Example message.'
       notes: [
-        { type: 'description', content 'This is an example message. You can delete it.' }
+        { type: 'DESCRIPTION', content 'This is an example message. You can delete it.' }
       ]
     }
   ]

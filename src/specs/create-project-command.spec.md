@@ -102,9 +102,9 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 
 | Command   | Arguments     | Flags           | Notes   |
 | --------- | ------------- | --------------- | ------- |
-| `create project` | `<projectName>` `<source>` `<targets>` | `--extend=<existing project name>` | `creates a new MsgProject file in the projects dir` |
+| `create project` | `<projectName>` `[source]` `[targets]` | `--extend=<existing project name>` | `creates a new MsgProject file in the projects dir` |
 
-* Note: Do not include the angle brackets above in the argument names
+* Note: Do not include the angle brackets above in the argument names. `source` and `targets` are optional when `--extend` is used; they are inherited from the base project.
 
 ### Inputs
 
@@ -112,8 +112,10 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 | Argument   | Type   | Required | Notes   |
 | ---------- | ------ | -------- | ------- |
 | `projectName` | `string` | `Y`    | `Name of the project to be created. Also used for file name` |
-| `source` | `string` | `Y`    | `source locale for the project` |
-| `targets` | `string array (variadic)` | `Y`    | `array of target locales for the project` |
+| `source` | `string` | `Y*`    | `source locale for the project` |
+| `targets` | `string array (variadic)` | `Y*`    | `array of target locales for the project` |
+
+* When `--extend` is passed, `source` and `targets` are optional and inherited from the base project.
 
 
 ### Options
@@ -255,6 +257,11 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
   - When: User runs `msg create project extendedApp en de --extend base`.
   - Then: A new MsgProject file is created at `i18n/projects/extendedApp.ts`; the new file merges data from `base` with the new project name and target locales; loader and other settings from the base project are preserved where appropriate; actions are logged to STDOUT.
 
+- **Extend existing project without source or targets**
+  - Given: An existing MsgProject file at `i18n/projects/base.ts` with defined project, locales, and loader settings.
+  - When: User runs `msg create project extendedApp --extend base` (no source or targets).
+  - Then: A new MsgProject file is created at `i18n/projects/extendedApp.ts`; source locale and target locales are inherited from the base project; actions are logged to STDOUT.
+
 - **Help**
   - Given: Any project directory.
   - When: User runs `msg create project -h` or `msg create project --help`.
@@ -284,14 +291,14 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
   - When: User runs `msg create project` (no arguments) or `msg create project "" en fr`.
   - Then: Command fails with a clear error indicating that projectName is required; no file is created; error is written to STDERR.
 
-- **Missing source locale**
+- **Missing source locale (without --extend)**
   - Given: A valid project setup.
-  - When: User runs `msg create project myApp` or `msg create project myApp "" fr`.
+  - When: User runs `msg create project myApp` or `msg create project myApp "" fr` (without `--extend`).
   - Then: Command fails with a clear error indicating that source is required; no file is created; error on STDERR.
 
-- **Missing target locales**
+- **Missing target locales (without --extend)**
   - Given: A valid project setup.
-  - When: User runs `msg create project myApp en` (no targets).
+  - When: User runs `msg create project myApp en` (no targets, without `--extend`).
   - Then: Command fails with a clear error indicating that at least one target locale is required; no file is created; error on STDERR.
 
 - **Package.json not found or not importable**

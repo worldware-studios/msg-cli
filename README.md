@@ -79,14 +79,16 @@ msg init -i
 Create a new MsgProject file in the i18n projects directory. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
 
 ```bash
-msg create project <projectName> <source> <targets...> [--extend <name>]
+msg create project <projectName> [source] [targets...] [--extend <name>]
 ```
 
 | Argument     | Required | Description                              |
 |-------------|----------|------------------------------------------|
 | `projectName` | Yes      | Name of the project (used as file name). |
-| `source`      | Yes      | Source locale (e.g. `en`).               |
-| `targets`     | Yes (≥1) | Target locale(s), e.g. `fr`, `de`, `es`. |
+| `source`      | Yes*     | Source locale (e.g. `en`).               |
+| `targets`     | Yes* (≥1) | Target locale(s), e.g. `fr`, `de`, `es`. |
+
+\* `source` and `targets` are optional when `--extend` is passed; they are inherited from the base project.
 
 | Flag        | Short | Description                    |
 |------------|-------|--------------------------------|
@@ -99,7 +101,10 @@ msg create project <projectName> <source> <targets...> [--extend <name>]
 # Create project myApp with source en and targets fr, de
 msg create project myApp en fr de
 
-# Extend an existing project
+# Extend an existing project (inherits source and targets from base)
+msg create project extendedApp --extend base
+
+# Extend and add/override locales
 msg create project extendedApp en de --extend base
 
 # Help
@@ -111,7 +116,7 @@ msg create project -h
 - Writes the file to `i18n/projects/<projectName>.js` or `.ts` (TypeScript if `tsconfig.json` exists).
 - Uses ES module or CommonJS export based on `package.json` `"type"`.
 - Generates a translation loader that imports from `l10n/translations` using the relative path from `i18n/projects` (from `directories` in package.json).
-- With `--extend <name>`, merges target locales and pseudoLocale from the existing project.
+- With `--extend <name>`, merges target locales and pseudoLocale from the existing project. If `source` and `targets` are omitted, they are inherited from the base project.
 - Errors if the project name already exists, package.json is missing or invalid, or required directories are not configured.
 
 ### create resource
