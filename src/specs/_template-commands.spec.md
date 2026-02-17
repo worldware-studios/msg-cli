@@ -233,4 +233,4 @@ Use simple, easy to understand language.
 
 - [OCLIF Documentation](https://oclif.io/docs/introduction.html)
 - [MSG Documentation](https://github.com/worldware-studios/msg#readme) or use README in local msg repository.
-- [XLIFF 1.2 Specification](https://docs.oasis-open.org/xliff/v1.2/os/xliff-core.html)
+- [XLIFF 2.0 Specification](https://docs.oasis-open.org/xliff/xliff-core/v2.0/xliff-core-v2.0.html)
