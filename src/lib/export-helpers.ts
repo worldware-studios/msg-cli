@@ -239,19 +239,15 @@ function resourceGroupToXliff20(group: ResourceGroup): string {
       if (msgAttr?.dnt === true) {
         msgAttrs.push('translate="no"');
       }
+      if (msgAttr?.dir) {
+        msgAttrs.push(`srcDir="${escapeXml(msgAttr.dir)}"`);
+      }
       parts.push(`    <unit ${msgAttrs.join(" ")}>`);
 
       const msgNotes = (msg as { notes?: MsgNoteLike[] }).notes ?? [];
-      const allNotes: MsgNoteLike[] = [...msgNotes];
-      if (msgAttr?.dir) {
-        allNotes.push({
-          type: "x-direction",
-          content: msgAttr.dir,
-        });
-      }
-      if (allNotes.length > 0) {
+      if (msgNotes.length > 0) {
         parts.push(
-          ...renderNotes(allNotes, `${fileId}-${unitId}`, "      ")
+          ...renderNotes(msgNotes, `${fileId}-${unitId}`, "      ")
         );
       }
 

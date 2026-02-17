@@ -364,16 +364,14 @@ describe("export-helpers", () => {
       expect(result[0].xliff).toContain('translate="no"');
     });
 
-    test("preserves message dir attribute in note", () => {
+    test("preserves message dir attribute as unit srcDir", () => {
       const res = createTestResource("R", "P", [
         { key: "k1", value: "v1", attributes: { dir: "rtl" } },
       ]);
       const result = serializeResourceGroupsToXliff([
         { project: "P", resources: [res] },
       ]);
-      expect(result[0].xliff).toContain(
-        'category="x-direction">rtl</note>'
-      );
+      expect(result[0].xliff).toContain('srcDir="rtl"');
     });
   });
 

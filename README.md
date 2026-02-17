@@ -198,7 +198,7 @@ msg export -p myApp
 - **Resource notes** — Emitted as file-level `<notes>` with category (e.g. `description`, `comment`).
 - **Resource attributes** — `dir` → file `srcDir`; `dnt` → file `translate="no"`.
 - **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
-- **Message attributes** — `dnt` → unit `translate="no"`; `dir` → note with `category="x-direction"`.
+- **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` attribute (XLIFF 2.0 text direction for the segment).
 
 ## API Reference
 
