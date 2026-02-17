@@ -250,14 +250,14 @@ describe("init-helpers", () => {
   describe("addScriptsToPackageJson", () => {
     test("adds i18n-export and l10n-import", () => {
       const pkg = addScriptsToPackageJson({ name: "x" });
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
-      expect(pkg.scripts?.["l10n-import"]).toBe("msg import translations");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export");
+      expect(pkg.scripts?.["l10n-import"]).toBe("msg import");
     });
 
     test("preserves existing scripts", () => {
       const pkg = addScriptsToPackageJson({ scripts: { build: "tsc" } });
       expect(pkg.scripts?.build).toBe("tsc");
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export");
     });
   });
 

@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources).
+**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff).
 
 ## Installation
 
@@ -30,7 +30,7 @@ For project-local setup, run `msg init` in your project root to add msg and msg-
 
 ## Usage
 
-**Commands:** `init`, `create project`, `create resource`.
+**Commands:** `init`, `create project`, `create resource`, `export`.
 
 ### init
 
@@ -70,7 +70,7 @@ msg init -i
 2. Adds `.gitkeep` in each leaf directory.
 3. Adds `directories.i18n`, `directories.l10n`, and `directories.root` to `package.json`.
 4. Adds import aliases `#i18n/*`, `#l10n/*`, and `#root/*` to `package.json`.
-5. Adds scripts `i18n-export` and `l10n-import` (pointing to `msg export resources` and `msg import translations`) for when those commands are available.
+5. Adds scripts `i18n-export` and `l10n-import` (pointing to `msg export` and `msg import`) for when those commands are available.
 6. If `tsconfig.json` exists, adds `compilerOptions.baseUrl` and `compilerOptions.paths` for the aliases.
 7. Installs the latest `@worldware/msg` as a dependency.
 
@@ -159,6 +159,39 @@ msg create resource myProject messages --edit
 - Includes a minimal example message. Validates that the generated file is importable.
 - Errors if i18n/projects or i18n/resources does not exist, the project is not found, or the resource file already exists (unless `--force`).
 
+### export
+
+Serialize all MsgResource files in `i18n/resources` to XLIFF 2.0 files in `l10n/xliff`, one file per project. Does not send files for translation; use your own translation workflow with the generated XLIFF. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
+
+```bash
+msg export [-p <projectName>]
+```
+
+| Flag         | Short | Description                                |
+|-------------|-------|--------------------------------------------|
+| `--project` | `-p`  | Export only the named project.             |
+| `--help`    | `-h`  | Show help for the export command.          |
+
+**Examples:**
+
+```bash
+# Export all projects to l10n/xliff
+msg export
+
+# Export only project "myApp"
+msg export --project myApp
+msg export -p myApp
+```
+
+**Behavior:**
+
+- Recursively finds all `.msg.js` and `.msg.ts` files under `i18n/resources`.
+- Imports each file as a MsgResource; errors if any file is invalid.
+- Groups resources by project name and writes one XLIFF 2.0 file per project to `l10n/xliff` (e.g. `myApp.xliff`).
+- With `--project`, only that project is exported; existing other files in `l10n/xliff` are not removed.
+- If no MsgResource files are found, exits with an informational message (no error).
+- Logs each major step (finding files, importing, grouping, writing).
+
 ## API Reference
 
 The CLI does not expose a programmatic API. For library usage, see [@worldware/msg](https://github.com/worldware-studios/msg).
@@ -173,8 +206,8 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 
 Source layout:
 
-- `src/commands/` — CLI commands (init, create/project, create/resource).
-- `src/lib/` — Shared utilities, init helpers, create-project helpers, and create-resource helpers.
+- `src/commands/` — CLI commands (init, export, create/project, create/resource).
+- `src/lib/` — Shared utilities, init helpers, export-helpers, create-project helpers, and create-resource helpers.
 - `src/specs/` — Feature and command specs.
 - `src/tests/` — Vitest tests and fixtures.
 
