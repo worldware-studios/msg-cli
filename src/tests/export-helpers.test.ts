@@ -36,21 +36,37 @@ function createTestProject(name: string) {
   });
 }
 
+/** Note shape matching MsgNote from @worldware/msg. */
+type MsgNoteLike = { type: string; content: string };
+
 /** Creates a minimal MsgResource for use in tests. */
 function createTestResource(
   title: string,
   projectName: string,
-  messages: { key: string; value: string }[] = []
+  messages: {
+    key: string;
+    value: string;
+    attributes?: { dnt?: boolean; dir?: string };
+    notes?: MsgNoteLike[];
+  }[] = [],
+  resourceOpts?: {
+    attributes?: { lang?: string; dir?: string; dnt?: boolean };
+    notes?: MsgNoteLike[];
+  }
 ) {
   const project = createTestProject(projectName);
-  return MsgResource.create(
-    {
-      title,
-      attributes: { lang: "en", dir: "ltr" },
-      messages,
-    },
-    project
-  );
+  const data = {
+    title,
+    attributes: { lang: "en", dir: "ltr", dnt: false, ...resourceOpts?.attributes },
+    notes: resourceOpts?.notes,
+    messages: messages.map((m) => ({
+      key: m.key,
+      value: m.value,
+      attributes: m.attributes,
+      notes: m.notes,
+    })),
+  };
+  return MsgResource.create(data, project);
 }
 
 describe("export-helpers", () => {
@@ -275,6 +291,89 @@ describe("export-helpers", () => {
       expect(result).toHaveLength(2);
       expect(result[0].project).toBe("P1");
       expect(result[1].project).toBe("P2");
+    });
+
+    test("preserves message key as unit id and name attribute", () => {
+      const res = createTestResource("R", "P", [
+        { key: "greeting.hello", value: "Hello" },
+      ]);
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).toContain('id="greeting.hello"');
+      expect(result[0].xliff).toContain('name="greeting.hello"');
+      expect(result[0].xliff).toContain("<source>Hello</source>");
+    });
+
+    test("preserves message notes in unit notes", () => {
+      const res = createTestResource("R", "P", [
+        {
+          key: "k1",
+          value: "v1",
+          notes: [
+            { type: "DESCRIPTION", content: "A description" },
+            { type: "CONTEXT", content: "Login screen" },
+          ],
+        },
+      ]);
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).toContain("<notes>");
+      expect(result[0].xliff).toContain(
+        'category="description">A description</note>'
+      );
+      expect(result[0].xliff).toContain(
+        'category="context">Login screen</note>'
+      );
+    });
+
+    test("preserves resource notes in file notes", () => {
+      const res = createTestResource(
+        "R",
+        "P",
+        [{ key: "k1", value: "v1" }],
+        { notes: [{ type: "COMMENT", content: "Resource-level note" }] }
+      );
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).toContain("<notes>");
+      expect(result[0].xliff).toContain(
+        'category="comment">Resource-level note</note>'
+      );
+    });
+
+    test("preserves resource attributes (dir, dnt) on file", () => {
+      const res = createTestResource("R", "P", [{ key: "k1", value: "v1" }], {
+        attributes: { dir: "rtl", dnt: false },
+      });
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).toContain('srcDir="rtl"');
+    });
+
+    test("preserves message translate=no when dnt is true", () => {
+      const res = createTestResource("R", "P", [
+        { key: "k1", value: "v1", attributes: { dnt: true } },
+      ]);
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).toContain('translate="no"');
+    });
+
+    test("preserves message dir attribute in note", () => {
+      const res = createTestResource("R", "P", [
+        { key: "k1", value: "v1", attributes: { dir: "rtl" } },
+      ]);
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).toContain(
+        'category="x-direction">rtl</note>'
+      );
     });
   });
 

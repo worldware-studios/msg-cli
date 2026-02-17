@@ -18,6 +18,14 @@ export interface XliffGroup {
 
 const MSG_PATTERN = /\.msg\.(ts|js)$/i;
 
+/** Duck-type check for MsgResource so imports from the project's @worldware/msg are accepted (avoids instanceof across package copies). */
+function isMsgResourceLike(value: unknown): value is MsgResource {
+  return (
+    Boolean(value) &&
+    typeof (value as { getProject?: unknown }).getProject === "function"
+  );
+}
+
 const XLIFF20_NS = "urn:oasis:names:tc:xliff:document:2.0";
 
 /**
@@ -61,7 +69,7 @@ export async function importMsgResourcesFromPaths(
     const mod = await dynamicImportFromUrl(url);
     const resource: unknown =
       mod.default ?? (mod as { resource?: unknown }).resource ?? (mod as { MsgResource?: unknown }).MsgResource;
-    if (!resource || !(resource instanceof MsgResource)) {
+    if (!isMsgResourceLike(resource)) {
       throw new Error(
         `Failed to import MsgResource from ${filePath}: no valid export found`
       );
@@ -108,6 +116,19 @@ export function filterResourceGroupsByProject(
   return groups.filter((g) => g.project === projectName);
 }
 
+/** MsgNote type from @worldware/msg (avoid hard dependency on full interface). */
+interface MsgNoteLike {
+  type: string;
+  content: string;
+}
+
+/** MsgAttributes type from @worldware/msg. */
+interface MsgAttributesLike {
+  lang?: string;
+  dir?: string;
+  dnt?: boolean;
+}
+
 /**
  * Escapes a string for use in XML attribute or text content.
  */
@@ -121,8 +142,60 @@ function escapeXml(s: string): string {
 }
 
 /**
+ * Sanitizes a string for use as an XML NMTOKEN (e.g. unit id).
+ * Replaces invalid characters with underscore; ensures result does not start with digit.
+ */
+function sanitizeForXmlId(s: string): string {
+  const sanitized = s.replace(/[^a-zA-Z0-9._:-]/g, "_").replace(/_+/g, "_");
+  if (/^[0-9]/.test(sanitized) || sanitized === "") {
+    return `k${sanitized}`;
+  }
+  return sanitized;
+}
+
+/**
+ * Maps MsgNote.type to XLIFF 2.0 note category (lowercase).
+ */
+function noteTypeToCategory(type: string): string {
+  const lower = type.toLowerCase();
+  if (lower.startsWith("x-")) return lower;
+  return ["description", "authorship", "parameters", "context", "comment"].includes(
+    lower
+  )
+    ? lower
+    : `x-${lower}`;
+}
+
+/**
+ * Renders XLIFF 2.0 <note> elements from an array of notes.
+ * @param notes - Array of note objects
+ * @param idPrefix - Prefix for note id attributes (must be unique per file)
+ * @param indent - Spaces for the <notes> element (4 for file-level, 6 for unit-level)
+ */
+function renderNotes(
+  notes: MsgNoteLike[],
+  idPrefix: string,
+  indent: string = "    "
+): string[] {
+  const parts: string[] = [];
+  if (notes.length === 0) return parts;
+  const noteIndent = indent + "  ";
+  parts.push(`${indent}<notes>`);
+  notes.forEach((n, i) => {
+    const cat = noteTypeToCategory(n.type);
+    const id = `${idPrefix}-n${i + 1}`;
+    parts.push(
+      `${noteIndent}<note id="${escapeXml(id)}" category="${escapeXml(cat)}">${escapeXml(n.content)}</note>`
+    );
+  });
+  parts.push(`${indent}</notes>`);
+  return parts;
+}
+
+/**
  * Serializes a single ResourceGroup to an XLIFF 2.0 document string.
- * Preserves message keys (as unit id), source text, and resource/file structure.
+ * Preserves message keys (as unit id and name), source text, resource and message
+ * notes, attributes (lang, dir, dnt), and resource/file structure.
  */
 function resourceGroupToXliff20(group: ResourceGroup): string {
   const srcLang = group.resources[0]?.attributes?.lang ?? "en";
@@ -135,14 +208,53 @@ function resourceGroupToXliff20(group: ResourceGroup): string {
     const orig = `${resource.title}.json`;
     fileIndex += 1;
     const fileId = `f${fileIndex}`;
-    parts.push(
-      `  <file id="${fileId}" original="${escapeXml(orig)}">`
-    );
+    const attrs: MsgAttributesLike = resource.attributes ?? {};
+    const fileAttrs: string[] = [
+      `id="${fileId}"`,
+      `original="${escapeXml(orig)}"`,
+    ];
+    if (attrs.dir) {
+      fileAttrs.push(`srcDir="${escapeXml(attrs.dir)}"`);
+    }
+    if (attrs.dnt === true) {
+      fileAttrs.push('translate="no"');
+    }
+    parts.push(`  <file ${fileAttrs.join(" ")}>`);
+
     const data = resource.getData(false);
+    const resourceNotes = (data.notes ?? []) as MsgNoteLike[];
+    if (resourceNotes.length > 0) {
+      parts.push(...renderNotes(resourceNotes, fileId, "    "));
+    }
+
     const messages = data.messages ?? [];
     messages.forEach((msg, idx) => {
-      const unitId = `u${fileIndex}-${idx + 1}`;
-      parts.push(`    <unit id="${unitId}">`);
+      const unitId =
+        sanitizeForXmlId(msg.key) || `u${fileIndex}-${idx + 1}`;
+      const msgAttrs: string[] = [`id="${escapeXml(unitId)}"`];
+      if (msg.key) {
+        msgAttrs.push(`name="${escapeXml(msg.key)}"`);
+      }
+      const msgAttr = (msg as { attributes?: MsgAttributesLike }).attributes;
+      if (msgAttr?.dnt === true) {
+        msgAttrs.push('translate="no"');
+      }
+      parts.push(`    <unit ${msgAttrs.join(" ")}>`);
+
+      const msgNotes = (msg as { notes?: MsgNoteLike[] }).notes ?? [];
+      const allNotes: MsgNoteLike[] = [...msgNotes];
+      if (msgAttr?.dir) {
+        allNotes.push({
+          type: "x-direction",
+          content: msgAttr.dir,
+        });
+      }
+      if (allNotes.length > 0) {
+        parts.push(
+          ...renderNotes(allNotes, `${fileId}-${unitId}`, "      ")
+        );
+      }
+
       parts.push("      <segment>");
       parts.push(`        <source>${escapeXml(msg.value)}</source>`);
       parts.push("      </segment>");

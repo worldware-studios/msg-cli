@@ -10,6 +10,16 @@ import { XMLParser } from "fast-xml-parser";
 
 const MSG_PATTERN = /\.msg\.(ts|js)$/i;
 
+/** Duck-type check for MsgResource so imports from the project's @worldware/msg are accepted (avoids instanceof across package copies). */
+function isMsgResourceLike(
+  value: unknown
+): value is MsgResource {
+  return (
+    Boolean(value) &&
+    typeof (value as { getProject?: unknown }).getProject === "function"
+  );
+}
+
 /**
  * Recursively finds all javascript and typescript files in a directory that have
  * an `.msg.` substring in their filename just before the file extension.
@@ -49,7 +59,7 @@ export async function importMsgResources(
     const mod = await import(url);
     const resource: MsgResource | undefined =
       mod.default ?? mod.resource ?? mod.MsgResource;
-    if (!resource || !(resource instanceof MsgResource)) {
+    if (!isMsgResourceLike(resource)) {
       throw new Error(
         `Failed to import MsgResource from ${filePath}: no valid export found`
       );

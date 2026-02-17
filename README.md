@@ -192,6 +192,14 @@ msg export -p myApp
 - If no MsgResource files are found, exits with an informational message (no error).
 - Logs each major step (finding files, importing, grouping, writing).
 
+**What is preserved in XLIFF 2.0:**
+
+- **Message keys** — Stored as unit `id` (sanitized for XML) and `name` (original key).
+- **Resource notes** — Emitted as file-level `<notes>` with category (e.g. `description`, `comment`).
+- **Resource attributes** — `dir` → file `srcDir`; `dnt` → file `translate="no"`.
+- **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
+- **Message attributes** — `dnt` → unit `translate="no"`; `dir` → note with `category="x-direction"`.
+
 ## API Reference
 
 The CLI does not expose a programmatic API. For library usage, see [@worldware/msg](https://github.com/worldware-studios/msg).
