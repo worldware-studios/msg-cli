@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff).
+**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff), `import` (import translations from XLIFF 2.0 to JSON in l10n/translations).
 
 ## Installation
 
@@ -30,7 +30,7 @@ For project-local setup, run `msg init` in your project root to add msg and msg-
 
 ## Usage
 
-**Commands:** `init`, `create project`, `create resource`, `export`.
+**Commands:** `init`, `create project`, `create resource`, `export`, `import`.
 
 ### init
 
@@ -200,6 +200,46 @@ msg export -p myApp
 - **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
 - **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` attribute (XLIFF 2.0 text direction for the segment).
 
+### import
+
+Import translations from bilingual XLIFF 2.0 files in `l10n/xliff` to JSON files in `l10n/translations`. Expects XLIFF files with `trgLang` (target language) and translated content in `<target>` elements. Writes JSON files without notes for minimal size. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
+
+```bash
+msg import [-p <projectName>] [-l <locale>]
+```
+
+| Flag         | Short | Description                                |
+|-------------|-------|--------------------------------------------|
+| `--project` | `-p`  | Import only the named project.             |
+| `--language`| `-l`  | Import only the specified locale.          |
+| `--help`    | `-h`  | Show help for the import command.          |
+
+**Examples:**
+
+```bash
+# Import all XLIFF files
+msg import
+
+# Import only project "myApp"
+msg import --project myApp
+msg import -p myApp
+
+# Import only locale "zh"
+msg import --language zh
+msg import -l zh
+```
+
+**Behavior:**
+
+- Recursively finds all `.xliff` and `.xlf` files under `l10n/xliff`.
+- Filenames like `project.locale.xliff` (e.g. `myApp.zh.xliff`) indicate project and target locale.
+- Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.
+- Skips monolingual XLIFF files (no `trgLang`).
+- Skips files whose target locale is not in the project's `targetLocales`.
+- Writes JSON to `l10n/translations/<project>/<locale>/<title>.json`.
+- Preserves existing translation files for other projects or locales when filtering.
+- Errors on malformed XLIFF and logs each step.
+
 ## API Reference
 
 The CLI does not expose a programmatic API. For library usage, see [@worldware/msg](https://github.com/worldware-studios/msg).
@@ -214,8 +254,8 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 
 Source layout:
 
-- `src/commands/` — CLI commands (init, export, create/project, create/resource).
-- `src/lib/` — Shared utilities, init helpers, export-helpers, create-project helpers, and create-resource helpers.
+- `src/commands/` — CLI commands (init, export, import, create/project, create/resource).
+- `src/lib/` — Shared utilities, init helpers, export-helpers, import-helpers, create-project helpers, and create-resource helpers.
 - `src/specs/` — Feature and command specs.
 - `src/tests/` — Vitest tests and fixtures.
 

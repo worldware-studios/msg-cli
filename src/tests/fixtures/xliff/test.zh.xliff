@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">
+  <file id="f1" original="Example.json">
+    <unit id="u1" name="hello">
+      <segment>
+        <source>Hello</source>
+        <target>你好</target>
+      </segment>
+    </unit>
+    <unit id="u2" name="world">
+      <segment>
+        <source>World</source>
+        <target>世界</target>
+      </segment>
+    </unit>
+  </file>
+</xliff>
