@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff), `import` (import translations from XLIFF 2.0 to JSON in l10n/translations).
+**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`, v0.2.0). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff), `import` (import translations from XLIFF 2.0 to JSON in l10n/translations).
 
 ## Installation
 
@@ -70,7 +70,7 @@ msg init -i
 2. Adds `.gitkeep` in each leaf directory.
 3. Adds `directories.i18n`, `directories.l10n`, and `directories.root` to `package.json`.
 4. Adds import aliases `#i18n/*`, `#l10n/*`, and `#root/*` to `package.json`.
-5. Adds scripts `i18n-export` and `l10n-import` (pointing to `msg export` and `msg import`) for when those commands are available.
+5. Adds scripts `i18n-export` and `l10n-import` (running `msg export` and `msg import`).
 6. If `tsconfig.json` exists, adds `compilerOptions.baseUrl` and `compilerOptions.paths` for the aliases.
 7. Installs the latest `@worldware/msg` as a dependency.
 
@@ -232,7 +232,7 @@ msg import -l zh
 **Behavior:**
 
 - Recursively finds all `.xliff` and `.xlf` files under `l10n/xliff`.
-- Filenames like `project.locale.xliff` (e.g. `myApp.zh.xliff`) indicate project and target locale.
+- Project and target locale are taken from the filename (e.g. `myApp.zh.xliff`) or from path segments (e.g. `myApp/zh/messages.xliff`).
 - Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.
 - Skips monolingual XLIFF files (no `trgLang`).
 - Skips files whose target locale is not in the project's `targetLocales`.
@@ -255,8 +255,7 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 Source layout:
 
 - `src/commands/` — CLI commands (init, export, import, create/project, create/resource).
-- `src/lib/` — Shared utilities, init helpers, export-helpers, import-helpers, create-project helpers, and create-resource helpers.
-- `src/specs/` — Feature and command specs.
+- `src/lib/` — Shared utilities: init-helpers, export-helpers, import-helpers, create-project-helpers, create-resource-helpers.
 - `src/tests/` — Vitest tests and fixtures.
 
 ## License
