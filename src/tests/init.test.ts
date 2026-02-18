@@ -103,8 +103,8 @@ describe("Init command", () => {
       expect(pkg.imports?.["#i18n/*"]).toBe("./src/i18n/*");
       expect(pkg.imports?.["#l10n/*"]).toBe("./res/l10n/*");
       expect(pkg.imports?.["#root/*"]).toBe("./*");
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
-      expect(pkg.scripts?.["l10n-import"]).toBe("msg import translations");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export");
+      expect(pkg.scripts?.["l10n-import"]).toBe("msg import");
     });
 
     test("custom --i18nDir and --l10nDir", async () => {
@@ -199,7 +199,7 @@ describe("Init command", () => {
       await Init.run(["-f"], CLI_ROOT);
       const pkg = JSON.parse(readFileSync(join(tmp, "package.json"), "utf-8"));
       expect(pkg.directories?.i18n).toBe("src/i18n");
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export");
     });
 
     test("empty or minimal package.json gets missing keys added", async () => {
@@ -211,7 +211,7 @@ describe("Init command", () => {
       expect(pkg.directories).toBeDefined();
       expect(pkg.imports).toBeDefined();
       expect(pkg.scripts).toBeDefined();
-      expect(pkg.scripts?.["i18n-export"]).toBe("msg export resources");
+      expect(pkg.scripts?.["i18n-export"]).toBe("msg export");
     });
   });
 

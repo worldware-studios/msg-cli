@@ -48,11 +48,14 @@ export default class CreateProject extends Command {
     if (!projectName?.trim()) {
       this.error("projectName is required.", { exit: 1 });
     }
-    if (!source?.trim()) {
-      this.error("source locale is required.", { exit: 1 });
-    }
-    if (!targets?.length || targets.every((t) => !t?.trim())) {
-      this.error("At least one target locale is required.", { exit: 1 });
+    const useExtend = Boolean(flags.extend?.trim());
+    if (!useExtend) {
+      if (!source?.trim()) {
+        this.error("source locale is required.", { exit: 1 });
+      }
+      if (!targets?.length || targets.every((t) => !t?.trim())) {
+        this.error("At least one target locale is required.", { exit: 1 });
+      }
     }
 
     const cwd = process.cwd();
@@ -87,6 +90,8 @@ export default class CreateProject extends Command {
 
     let targetLocales: Record<string, string[]> = {};
     let pseudoLocale = "en-XA";
+    let resolvedSource = source?.trim();
+    const hasUserSourceAndTargets = Boolean(resolvedSource && targets?.length && targets.some((t) => t?.trim()));
 
     if (flags.extend) {
       const base = await importMsgProjectFile(projectsDir, flags.extend);
@@ -99,11 +104,19 @@ export default class CreateProject extends Command {
       if (base.locales?.pseudoLocale) {
         pseudoLocale = base.locales.pseudoLocale;
       }
+      if (!hasUserSourceAndTargets) {
+        resolvedSource = base.locales?.sourceLocale ?? "";
+        if (!resolvedSource) {
+          this.error("Base project has no sourceLocale. Provide source and targets explicitly.", { exit: 1 });
+        }
+      }
     }
 
-    targetLocales[source] = [source];
-    for (const t of targets) {
-      if (t?.trim()) targetLocales[t.trim()] = [t.trim()];
+    if (hasUserSourceAndTargets) {
+      targetLocales[resolvedSource!] = [resolvedSource!];
+      for (const t of targets) {
+        if (t?.trim()) targetLocales[t.trim()] = [t.trim()];
+      }
     }
 
     const loaderPathLine =
@@ -136,7 +149,7 @@ const loader = async (project, title, language) => {
 export default MsgProject.create({
   project: { name: ${JSON.stringify(projectName)}, version: 1 },
   locales: {
-    sourceLocale: ${JSON.stringify(source)},
+    sourceLocale: ${JSON.stringify(resolvedSource)},
     pseudoLocale: ${JSON.stringify(pseudoLocale)},
     targetLocales: ${JSON.stringify(targetLocales)}
   },
@@ -153,7 +166,7 @@ const loader = async (project, title, language) => {
 module.exports = MsgProject.create({
   project: { name: ${JSON.stringify(projectName)}, version: 1 },
   locales: {
-    sourceLocale: ${JSON.stringify(source)},
+    sourceLocale: ${JSON.stringify(resolvedSource)},
     pseudoLocale: ${JSON.stringify(pseudoLocale)},
     targetLocales: ${JSON.stringify(targetLocales)}
   },

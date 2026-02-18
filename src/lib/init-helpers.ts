@@ -236,8 +236,8 @@ export function addImportAliasesToPackageJson(
 export function addScriptsToPackageJson(pkg: PackageJson): PackageJson {
   const scripts = {
     ...pkg.scripts,
-    "i18n-export": "msg export resources",
-    "l10n-import": "msg import translations",
+    "i18n-export": "msg export",
+    "l10n-import": "msg import",
   };
   return { ...pkg, scripts };
 }

@@ -203,6 +203,28 @@ describe("CreateProject command", () => {
       // Merged pseudoLocale from base
       expect(content).toContain("zxx");
     });
+
+    test("extend without source or targets inherits from base project", async () => {
+      setupValidProject(tmp);
+      const baseContent = `module.exports = {
+  project: { name: 'base', version: 1 },
+  locales: { sourceLocale: 'en', pseudoLocale: 'zxx', targetLocales: { en: ['en'], fr: ['fr'], de: ['de'] } },
+  loader: async () => ({ title: '', attributes: { lang: '', dir: '' }, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "base.js"), baseContent);
+      await CreateProject.run(["extendedApp", "--extend", "base"], CLI_ROOT);
+
+      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
+      const outPath = join(tmp, "i18n", "projects", "extendedApp" + ext);
+      expect(existsSync(outPath)).toBe(true);
+      const content = readFileSync(outPath, "utf-8");
+      expect(content).toContain("extendedApp");
+      expect(content).toMatch(/sourceLocale:\s*["']en["']/);
+      expect(content).toMatch(/"en":\s*\["en"\]/);
+      expect(content).toMatch(/"fr":\s*\["fr"\]/);
+      expect(content).toMatch(/"de":\s*\["de"\]/);
+      expect(content).toContain("zxx");
+    });
   });
 
   describe("Edge cases", () => {
