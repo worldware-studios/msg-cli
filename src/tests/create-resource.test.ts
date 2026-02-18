@@ -87,8 +87,7 @@ describe("CreateResource command", () => {
       setupValidProject(tmp, { type: "module" });
       await CreateResource.run(["myProject", "messages"], CLI_ROOT);
 
-      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
-      const outPath = join(tmp, "i18n", "resources", `messages.msg${ext}`);
+      const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("import { MsgResource } from '@worldware/msg'");
@@ -109,13 +108,13 @@ describe("CreateResource command", () => {
       expect(content).toContain("dir: 'ltr'");
     });
 
-    test("produces TypeScript file when tsconfig present", async () => {
+    test("produces JavaScript file even when tsconfig present", async () => {
       setupValidProject(tmp);
       writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
       await CreateResource.run(["myProject", "messages"], CLI_ROOT);
 
-      expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.ts"))).toBe(true);
-      expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.js"))).toBe(false);
+      expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.js"))).toBe(true);
+      expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.ts"))).toBe(false);
     });
 
     test("sets dir to rtl for Arabic sourceLocale", async () => {

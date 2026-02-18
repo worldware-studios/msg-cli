@@ -104,7 +104,7 @@ export default class CreateResource extends Command {
       );
     }
 
-    const ext = pkgInfo.useTypeScript ? ".ts" : ".js";
+    const ext = ".js";
     const outPath = join(resourcesDir, `${title.trim()}.msg${ext}`);
 
     if (existsSync(outPath) && !flags.force) {
