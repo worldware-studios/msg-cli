@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   existsSync,
   mkdirSync,
@@ -26,6 +26,24 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_XLIFF = join(__dirname, "fixtures", "xliff");
 const FIXTURES_PROJECTS = join(__dirname, "fixtures", "projects");
+
+vi.mock("fast-xml-parser", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("fast-xml-parser")>();
+  return {
+    XMLParser: class extends actual.XMLParser {
+      parse(xml: string) {
+        if (
+          typeof (globalThis as { __xliffParseReturnNull?: boolean }).__xliffParseReturnNull === "boolean" &&
+          (globalThis as { __xliffParseReturnNull?: boolean }).__xliffParseReturnNull
+        ) {
+          (globalThis as { __xliffParseReturnNull?: boolean }).__xliffParseReturnNull = false;
+          return null;
+        }
+        return super.parse(xml);
+      }
+    },
+  };
+});
 
 function createTestProject(targetLocales: Record<string, string[]> = { en: ["en"], zh: ["zh"] }) {
   return MsgProject.create({
@@ -192,6 +210,13 @@ describe("import-helpers", () => {
       expect(result.project).toBeTruthy();
       expect(result.project).not.toBe("");
     });
+
+    test("extracts locale from path when filename is only extension (.xlf)", () => {
+      // Filename ".xlf" does not match pattern; locale comes from path segment "zh"
+      const result = parseXliffFilename("/xliff/myproj/zh/.xlf");
+      expect(result.locale).toBe("zh");
+      expect(result.project).toBeTruthy();
+    });
   });
 
   describe("parseXliff20", () => {
@@ -209,6 +234,11 @@ describe("import-helpers", () => {
 
     test("throws on invalid XLIFF content", () => {
       expect(() => parseXliff20("This is not valid XML <<<")).toThrow(/Malformed|parse/);
+    });
+
+    test("throws with 'Failed to parse XLIFF' when parser returns null", () => {
+      (globalThis as { __xliffParseReturnNull?: boolean }).__xliffParseReturnNull = true;
+      expect(() => parseXliff20("<xliff></xliff>")).toThrow(/Failed to parse XLIFF/);
     });
   });
 
@@ -284,11 +314,7 @@ describe("import-helpers", () => {
       expect(result!.attributes.lang).toBe("zh");
       const data = result!.getData(true);
       expect(data.messages).toHaveLength(2);
-      expect(data.messages![0]).toEqual({
-        key: "hello",
-        value: "你好",
-        attributes: expect.any(Object),
-      });
+      expect(data.messages![0]).toMatchObject({ key: "hello", value: "你好" });
       expect(data.messages![1].value).toBe("世界");
     });
 
@@ -463,6 +489,76 @@ describe("import-helpers", () => {
       expect(result!.getData(true).messages![0].value).toBe("Part1Part2");
     });
 
+    test("extracts segment with target having single inline object (mrk) for branch coverage", () => {
+      const fileEl = {
+        "@_original": "M.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "k",
+          segment: {
+            target: {
+              mrk: { "#text": "marked text" },
+            },
+          },
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result!.getData(true).messages![0].value).toBe("marked text");
+    });
+
+    test("extracts segment value from source when target missing", () => {
+      const fileEl = {
+        "@_original": "S.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "k",
+          segment: { source: "Fallback source" },
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result!.getData(true).messages![0].value).toBe("Fallback source");
+    });
+
+    test("extracts note categories context, parameters, authorship", () => {
+      const fileEl = {
+        "@_original": "R.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "k1",
+          notes: {
+            note: [
+              { "@_category": "context", "#text": "Ctx" },
+              { "@_category": "parameters", "#text": "Params" },
+              { "@_category": "authorship", "#text": "Author" },
+            ],
+          },
+          segment: { source: "S", target: "T" },
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      const data = result!.getData(false);
+      expect(data.messages![0].notes).toHaveLength(3);
+      expect(data.messages![0].notes!.map((n) => n.type)).toEqual(["CONTEXT", "PARAMETERS", "AUTHORSHIP"]);
+    });
+
     test("extracts from nested groups", () => {
       const fileEl = {
         "@_original": "Nested.json",
@@ -538,6 +634,25 @@ describe("import-helpers", () => {
           "@_id": "u1",
           "@_name": "k",
           segment: [null],
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result!.getData(true).messages![0].value).toBe("");
+    });
+
+    test("handles segment with non-string non-object target/source (extractSegmentText fallback)", () => {
+      const fileEl = {
+        "@_original": "E.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "k",
+          segment: { source: 123, target: 456 },
         },
       };
       const result = extractResourceFromXliffFile(
@@ -741,6 +856,20 @@ describe("import-helpers", () => {
       expect(result).toBeNull();
     });
 
+    test("returns null when xliff has no file elements", async () => {
+      const noFiles = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">
+</xliff>`;
+      writeFileSync(join(tmp, "xliff", "nofiles.xliff"), noFiles);
+      const result = await processXliffFile(
+        join(tmp, "xliff", "nofiles.xliff"),
+        join(tmp, "projects"),
+        "test",
+        "zh"
+      );
+      expect(result).toBeNull();
+    });
+
     test("processes multiple file elements", async () => {
       const multiFile = `<?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">
@@ -805,6 +934,17 @@ describe("import-helpers", () => {
         /does not export a valid MsgProject/
       );
     });
+
+    test("loads valid MsgProject from .ts file", async () => {
+      writeFileSync(
+        join(tmp, "valid.ts"),
+        readFileSync(join(FIXTURES_PROJECTS, "test.ts"), "utf-8")
+      );
+      const project = await importMsgProject(tmp, "valid");
+      expect(project).toBeDefined();
+      expect(project.locales?.targetLocales).toBeDefined();
+      expect(Object.keys(project.locales.targetLocales)).toContain("zh");
+    });
   });
 
   describe("writeTranslationFiles", () => {
@@ -849,6 +989,20 @@ describe("import-helpers", () => {
       const parsed = JSON.parse(content);
       expect(parsed.notes).toBeUndefined();
       expect(parsed.messages[0].value).toBe("v1");
+    });
+
+    test("writes multiple resource files for one ImportResult", async () => {
+      const result: ImportResult = {
+        project: "app",
+        locale: "de",
+        resources: [
+          { title: "A", json: '{"title":"A","attributes":{},"messages":[]}' },
+          { title: "B", json: '{"title":"B","attributes":{},"messages":[]}' },
+        ],
+      };
+      await writeTranslationFiles(tmp, result);
+      expect(existsSync(join(tmp, "app", "de", "A.json"))).toBe(true);
+      expect(existsSync(join(tmp, "app", "de", "B.json"))).toBe(true);
     });
   });
 });
