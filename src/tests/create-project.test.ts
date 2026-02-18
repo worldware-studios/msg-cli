@@ -83,8 +83,7 @@ describe("CreateProject command", () => {
       setupValidProject(tmp);
       await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
 
-      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
-      const outPath = join(tmp, "i18n", "projects", `myApp${ext}`);
+      const outPath = join(tmp, "i18n", "projects", "myApp.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("project: { name: \"myApp\"");
@@ -101,8 +100,7 @@ describe("CreateProject command", () => {
       setupValidProject(tmp);
       await CreateProject.run(["myApp", "en", "fr", "de", "es"], CLI_ROOT);
 
-      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
-      const content = readFileSync(join(tmp, "i18n", "projects", `myApp${ext}`), "utf-8");
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
       expect(content).toMatch(/"en":\s*\["en"\]/);
       expect(content).toMatch(/"fr":\s*\["fr"\]/);
       expect(content).toMatch(/"de":\s*\["de"\]/);
@@ -113,8 +111,7 @@ describe("CreateProject command", () => {
       setupValidProject(tmp, { type: "module" });
       await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
 
-      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
-      const content = readFileSync(join(tmp, "i18n", "projects", `myApp${ext}`), "utf-8");
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
       expect(content).toContain("import { MsgProject }");
       expect(content).toContain("export default MsgProject.create");
       expect(content).not.toContain("module.exports");
@@ -130,13 +127,13 @@ describe("CreateProject command", () => {
       expect(content).not.toContain("export default");
     });
 
-    test("TypeScript project writes .ts file", async () => {
+    test("TypeScript project writes .js file", async () => {
       setupValidProject(tmp);
       writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
       await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
 
-      expect(existsSync(join(tmp, "i18n", "projects", "myApp.ts"))).toBe(true);
-      expect(existsSync(join(tmp, "i18n", "projects", "myApp.js"))).toBe(false);
+      expect(existsSync(join(tmp, "i18n", "projects", "myApp.js"))).toBe(true);
+      expect(existsSync(join(tmp, "i18n", "projects", "myApp.ts"))).toBe(false);
     });
 
     test("JavaScript project without tsconfig writes .js file", async () => {
@@ -192,8 +189,7 @@ describe("CreateProject command", () => {
       writeFileSync(join(tmp, "i18n", "projects", "base.js"), baseContent);
       await CreateProject.run(["extendedApp", "en", "de", "--extend", "base"], CLI_ROOT);
 
-      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
-      const outPath = join(tmp, "i18n", "projects", "extendedApp" + ext);
+      const outPath = join(tmp, "i18n", "projects", "extendedApp.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("extendedApp");
@@ -214,8 +210,7 @@ describe("CreateProject command", () => {
       writeFileSync(join(tmp, "i18n", "projects", "base.js"), baseContent);
       await CreateProject.run(["extendedApp", "--extend", "base"], CLI_ROOT);
 
-      const ext = existsSync(join(tmp, "tsconfig.json")) ? ".ts" : ".js";
-      const outPath = join(tmp, "i18n", "projects", "extendedApp" + ext);
+      const outPath = join(tmp, "i18n", "projects", "extendedApp.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("extendedApp");
