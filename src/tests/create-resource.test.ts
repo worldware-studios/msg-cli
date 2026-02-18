@@ -108,13 +108,17 @@ describe("CreateResource command", () => {
       expect(content).toContain("dir: 'ltr'");
     });
 
-    test("produces JavaScript file even when tsconfig present", async () => {
+    test("produces JavaScript file with ESM when tsconfig present", async () => {
       setupValidProject(tmp);
       writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
       await CreateResource.run(["myProject", "messages"], CLI_ROOT);
 
       expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.js"))).toBe(true);
       expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.ts"))).toBe(false);
+      const content = readFileSync(join(tmp, "i18n", "resources", "messages.msg.js"), "utf-8");
+      expect(content).toContain("import { MsgResource } from '@worldware/msg'");
+      expect(content).toContain("export default MsgResource.create");
+      expect(content).not.toContain("module.exports");
     });
 
     test("sets dir to rtl for Arabic sourceLocale", async () => {

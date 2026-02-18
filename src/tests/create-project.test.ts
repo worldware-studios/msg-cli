@@ -136,6 +136,17 @@ describe("CreateProject command", () => {
       expect(existsSync(join(tmp, "i18n", "projects", "myApp.ts"))).toBe(false);
     });
 
+    test("TypeScript project (tsconfig only) uses ESM syntax", async () => {
+      setupValidProject(tmp);
+      writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toContain("import { MsgProject }");
+      expect(content).toContain("export default MsgProject.create");
+      expect(content).not.toContain("module.exports");
+    });
+
     test("JavaScript project without tsconfig writes .js file", async () => {
       setupValidProject(tmp);
       await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
