@@ -386,6 +386,21 @@ describe("CreateResource command", () => {
       vi.restoreAllMocks();
     });
 
+    test("writeMsgResourceFile throws leaves no partial file", async () => {
+      setupValidProject(tmp);
+      const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
+      vi.spyOn(createResourceHelpers, "writeMsgResourceFile").mockImplementation(() => {
+        throw new Error("Disk full");
+      });
+
+      await expect(CreateResource.run(["myProject", "messages"], CLI_ROOT)).rejects.toThrow(
+        /Could not generate resource file|Disk full/
+      );
+
+      expect(existsSync(outPath)).toBe(false);
+      vi.restoreAllMocks();
+    });
+
     test("generated file fails validation and is cleaned up", async () => {
       setupValidProject(tmp);
       vi.spyOn(createResourceHelpers, "writeMsgResourceFile").mockImplementation(

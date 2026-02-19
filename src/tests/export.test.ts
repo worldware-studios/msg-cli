@@ -201,6 +201,27 @@ describe("Export command", () => {
       expect(files).toHaveLength(0);
     });
 
+    test("when writeXliffFiles throws, command errors and reports failure", async () => {
+      const { resourcesDir, xliffDir } = setupPackageWithI18nAndL10n(tmp);
+      copyMsgFixtures(FIXTURES_MSG, resourcesDir);
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+
+      const exportHelpers = await import("../lib/export-helpers.js");
+      vi.spyOn(exportHelpers, "writeXliffFiles").mockRejectedValueOnce(
+        new Error("EACCES: permission denied")
+      );
+
+      await expect(Export.run([], CLI_ROOT)).rejects.toThrow(
+        /Could not write XLIFF files|EACCES|permission denied/
+      );
+
+      const files = existsSync(xliffDir)
+        ? readdirSync(xliffDir).filter((f) => f.endsWith(".xliff"))
+        : [];
+      expect(files).toHaveLength(0);
+      vi.restoreAllMocks();
+    });
+
     test("i18n/resources directory missing exits with message", async () => {
       setupPackageWithI18nAndL10n(tmp);
       const warnSpy = vi.spyOn(Export.prototype, "warn").mockImplementation(() => {});

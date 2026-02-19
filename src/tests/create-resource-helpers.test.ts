@@ -248,6 +248,29 @@ describe("create-resource-helpers", () => {
       expect(content).toContain("title: 't'");
       expect(content).toContain("../projects/p.js");
     });
+
+    test("escapes single quotes in title", () => {
+      const content = generateMsgResourceContent({
+        title: "O'Brien",
+        projectName: "myProject",
+        sourceLocale: "en",
+        dir: "ltr",
+        isEsm: true,
+      });
+      expect(content).toContain("title: 'O\\'Brien'");
+      expect(content).not.toMatch(/title: 'O'Brien'/);
+    });
+
+    test("escapes single quotes in sourceLocale", () => {
+      const content = generateMsgResourceContent({
+        title: "messages",
+        projectName: "myProject",
+        sourceLocale: "en-US",
+        dir: "ltr",
+        isEsm: true,
+      });
+      expect(content).toMatch(/lang:\s*'[^']*'/);
+    });
   });
 
   describe("writeMsgResourceFile", () => {
