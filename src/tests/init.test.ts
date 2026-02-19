@@ -167,6 +167,19 @@ describe("Init command", () => {
       expect(pkg.imports?.["#l10n/*"]).toBe("./data/l10n/*");
     });
 
+    test("-i with whitespace-only answers uses default paths", async () => {
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
+      interactiveAnswers = ["   ", "  \t  "];
+
+      await Init.run(["-i"], CLI_ROOT);
+
+      expect(existsSync(join(tmp, "src", "i18n", "projects", ".gitkeep"))).toBe(true);
+      expect(existsSync(join(tmp, "res", "l10n", "xliff", ".gitkeep"))).toBe(true);
+      const pkg = JSON.parse(readFileSync(join(tmp, "package.json"), "utf-8"));
+      expect(pkg.directories.i18n).toBe("src/i18n");
+      expect(pkg.directories.l10n).toBe("res/l10n");
+    });
+
     test("-i --i18nDir custom/i18n prompts only for l10n", async () => {
       writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
       interactiveAnswers = ["locales/l10n"];
@@ -230,6 +243,14 @@ describe("Init command", () => {
       writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
 
       await expect(Init.run(["--i18nDir", "/absolute/path"], CLI_ROOT)).rejects.toThrow(/relative|Invalid/);
+    });
+
+    test("invalid --l10nDir fails", async () => {
+      writeFileSync(join(tmp, "package.json"), JSON.stringify({ name: "app" }));
+
+      await expect(Init.run(["--l10nDir", "/absolute/path"], CLI_ROOT)).rejects.toThrow(
+        /relative|Invalid|l10n/
+      );
     });
 
     test("when writePackageJson fails, command errors", async () => {

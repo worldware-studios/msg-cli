@@ -91,6 +91,14 @@ describe("init-helpers", () => {
       rmSync(tmp, { recursive: true, force: true });
     });
 
+    test("throws when package.json not found", () => {
+      const emptyDir = join(tmp, "empty", "nested");
+      mkdirSync(emptyDir, { recursive: true });
+      expect(() => loadPackageJsonForMsg(emptyDir)).toThrow(
+        /package\.json not found|Run this command from the project root/
+      );
+    });
+
     test("returns context with i18nDir, isEsm, useTypeScript when valid", () => {
       writeFileSync(
         join(tmp, "package.json"),
@@ -127,6 +135,16 @@ describe("init-helpers", () => {
       );
       const ctx = loadPackageJsonForMsg(tmp);
       expect(ctx.i18nDir).toBe("i18n");
+    });
+
+    test("requireL10n false allows l10n missing", () => {
+      writeFileSync(
+        join(tmp, "package.json"),
+        JSON.stringify({ name: "app", directories: { i18n: "i18n" } })
+      );
+      const ctx = loadPackageJsonForMsg(tmp, { requireL10n: false });
+      expect(ctx.i18nDir).toBe("i18n");
+      expect(ctx.l10nDir).toBeUndefined();
     });
   });
 

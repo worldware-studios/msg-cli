@@ -119,7 +119,7 @@ export default class CreateResource extends Command {
       projectName: projectName.trim(),
       sourceLocale: projectData.sourceLocale,
       dir: projectData.dir,
-      isEsm: pkgInfo.isEsm,
+      isEsm: pkgInfo.isEsm || pkgInfo.useTypeScript,
     });
 
     try {

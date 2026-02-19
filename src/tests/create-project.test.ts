@@ -136,6 +136,17 @@ describe("CreateProject command", () => {
       expect(existsSync(join(tmp, "i18n", "projects", "myApp.ts"))).toBe(false);
     });
 
+    test("TypeScript project (tsconfig only) uses ESM syntax", async () => {
+      setupValidProject(tmp);
+      writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toContain("import { MsgProject }");
+      expect(content).toContain("export default MsgProject.create");
+      expect(content).not.toContain("module.exports");
+    });
+
     test("JavaScript project without tsconfig writes .js file", async () => {
       setupValidProject(tmp);
       await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
@@ -223,6 +234,52 @@ describe("CreateProject command", () => {
   });
 
   describe("Edge cases", () => {
+    test("extend base with no sourceLocale fails when not providing source and targets", async () => {
+      setupValidProject(tmp);
+      const baseNoSource = `module.exports = {
+  project: { name: 'base' },
+  locales: { targetLocales: { en: ['en'], fr: ['fr'] }, pseudoLocale: 'zxx' },
+  loader: async () => ({ title: '', attributes: {}, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "baseNoSource.js"), baseNoSource);
+
+      await expect(
+        CreateProject.run(["extendedApp", "--extend", "baseNoSource"], CLI_ROOT)
+      ).rejects.toThrow(/Base project has no sourceLocale|Provide source and targets explicitly/);
+    });
+
+    test("extend base with no targetLocales uses empty targetLocales and adds user targets", async () => {
+      setupValidProject(tmp);
+      const baseNoTargets = `module.exports = {
+  project: { name: 'base' },
+  locales: { sourceLocale: 'en', pseudoLocale: 'zxx' },
+  loader: async () => ({ title: '', attributes: {}, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "baseNoTargets.js"), baseNoTargets);
+
+      await CreateProject.run(["extendedApp", "en", "fr", "--extend", "baseNoTargets"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "extendedApp.js"), "utf-8");
+      expect(content).toMatch(/sourceLocale:\s*["']en["']/);
+      expect(content).toMatch(/"en":\s*\["en"\]/);
+      expect(content).toMatch(/"fr":\s*\["fr"\]/);
+    });
+
+    test("extend base with no pseudoLocale uses default en-XA", async () => {
+      setupValidProject(tmp);
+      const baseNoPseudo = `module.exports = {
+  project: { name: 'base' },
+  locales: { sourceLocale: 'en', targetLocales: { en: ['en'], fr: ['fr'] } },
+  loader: async () => ({ title: '', attributes: {}, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "baseNoPseudo.js"), baseNoPseudo);
+
+      await CreateProject.run(["extendedApp", "en", "de", "--extend", "baseNoPseudo"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "extendedApp.js"), "utf-8");
+      expect(content).toContain("en-XA");
+    });
+
     test("custom i18n and l10n paths in package.json", async () => {
       setupValidProject(tmp, {
         directories: { i18n: "lib/i18n", l10n: "data/l10n", root: "." },

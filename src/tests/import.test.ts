@@ -205,6 +205,52 @@ describe("Import command", () => {
       logSpy.mockRestore();
     });
 
+    test("skips XLIFF when locale not in project targetLocales (processXliffFile returns null)", async () => {
+      const { xliffDir, translationsDir, projectsDir } =
+        setupPackageWithI18nAndL10n(tmp);
+      const esXliff = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="es">
+  <file id="f1" original="Example.json">
+    <unit id="u1" name="hello">
+      <segment><source>Hello</source><target>Hola</target></segment>
+    </unit>
+  </file>
+</xliff>`;
+      writeFileSync(join(xliffDir, "test.es.xliff"), esXliff);
+      copyFileSync(
+        join(FIXTURES_PROJECTS, "test.ts"),
+        join(projectsDir, "test.ts")
+      );
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+      const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+
+      await ImportCmd.run([], CLI_ROOT);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "No translatable XLIFF files found (or all were monolingual / unsupported locale)."
+      );
+      expect(existsSync(join(translationsDir, "test", "es"))).toBe(false);
+      logSpy.mockRestore();
+    });
+
+    test("skips XLIFF when project file does not exist (processXliffFile returns null)", async () => {
+      const { xliffDir, translationsDir } = setupPackageWithI18nAndL10n(tmp);
+      copyFileSync(
+        join(FIXTURES_XLIFF, "test.zh.xliff"),
+        join(xliffDir, "nonexistent.zh.xliff")
+      );
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+      const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+
+      await ImportCmd.run([], CLI_ROOT);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "No translatable XLIFF files found (or all were monolingual / unsupported locale)."
+      );
+      expect(existsSync(join(translationsDir, "nonexistent"))).toBe(false);
+      logSpy.mockRestore();
+    });
+
     test("l10n/xliff directory does not exist exits with warning", async () => {
       const pkg = {
         name: "test-app",

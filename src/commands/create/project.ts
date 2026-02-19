@@ -79,7 +79,9 @@ export default class CreateProject extends Command {
     const translationsDir = join(rootDir, l10nDir, "translations");
 
     const relPath = calculateRelativePath(projectsDir, translationsDir);
-    const isEsm = (pkg as { type?: string }).type === "module";
+    const isEsm =
+      (pkg as { type?: string }).type === "module" ||
+      existsSync(join(rootDir, "tsconfig.json"));
     const ext = ".js";
     const outPath = join(projectsDir, `${projectName}${ext}`);
 

@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`, v0.2.0). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff), `import` (import translations from XLIFF 2.0 to JSON in l10n/translations).
+**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`, v0.2.2). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff), `import` (import translations from XLIFF 2.0 to JSON in l10n/translations).
 
 ## Installation
 
@@ -20,7 +20,7 @@ Or use via `npx`:
 npx msg <command>
 ```
 
-For project-local setup, run `msg init` in your project root to add msg and msg-cli as dependencies and scaffold directories and config.
+For project-local setup, run `msg init` in your project root to add `@worldware/msg` and scaffold directories and config. Install msg-cli globally (as above) or as a dev dependency to run the commands.
 
 ## Core Concepts
 
@@ -113,9 +113,10 @@ msg create project -h
 
 **Behavior:**
 
-- Writes the file to `i18n/projects/<projectName>.js` or `.ts` (TypeScript if `tsconfig.json` exists).
-- Uses ES module or CommonJS export based on `package.json` `"type"`.
+- Writes the file to `i18n/projects/<projectName>.js` (always `.js`).
+- Uses ES module or CommonJS export syntax based on `package.json` `"type"` or presence of `tsconfig.json`.
 - Generates a translation loader that imports from `l10n/translations` using the relative path from `i18n/projects` (from `directories` in package.json).
+- Includes `pseudoLocale: 'en-XA'` by default (or inherits from the base project when extending), for use with msg's `getTranslation(pseudoLocale)` pseudolocalization support.
 - With `--extend <name>`, merges target locales and pseudoLocale from the existing project. If `source` and `targets` are omitted, they are inherited from the base project.
 - Errors if the project name already exists, package.json is missing or invalid, or required directories are not configured.
 
@@ -153,8 +154,8 @@ msg create resource myProject messages --edit
 
 **Behavior:**
 
-- Writes the file to `i18n/resources/<title>.msg.js` or `.msg.ts` (TypeScript if `tsconfig.json` exists).
-- Uses ES module or CommonJS export based on `package.json` `"type"`.
+- Writes the file to `i18n/resources/<title>.msg.js` (always `.js`).
+- Uses ES module or CommonJS export syntax based on `package.json` `"type"` or presence of `tsconfig.json`.
 - Sets `lang` from the project's `sourceLocale` and `dir` to `rtl` for Arabic/Hebrew, `ltr` otherwise.
 - Includes a minimal example message. Validates that the generated file is importable.
 - Errors if i18n/projects or i18n/resources does not exist, the project is not found, or the resource file already exists (unless `--force`).
@@ -236,6 +237,7 @@ msg import -l zh
 - Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.
 - Skips monolingual XLIFF files (no `trgLang`).
 - Skips files whose target locale is not in the project's `targetLocales`.
+- Skips files when the matching project file does not exist or cannot be loaded.
 - Writes JSON to `l10n/translations/<project>/<locale>/<title>.json`.
 - Preserves existing translation files for other projects or locales when filtering.
 - Errors on malformed XLIFF and logs each step.
