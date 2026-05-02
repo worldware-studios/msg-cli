@@ -244,6 +244,90 @@ msg import -l zh
 - Preserves existing translation files for other projects or locales when filtering.
 - Errors on malformed XLIFF and logs each step.
 
+### Example: plural messages (XLIFF 2.2 PGS)
+
+Plural (and other classifiable `.match`) messages use the [XLIFF 2.2 PGS module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html): export splits them into one `<segment>` per variant (`pgs:case`), and import merges `<target>` text back into a single MessageFormat 2 string per message key.
+
+**1. Message in the MsgResource** (Unicode MessageFormat 2 with `.input` / `.match` on a plural):
+
+```js
+// i18n/resources/messages.msg.js — excerpt
+itemsCount: `.input {$n :number}
+.match $n
+one {{One item}}
+* {{{$n} items}}`,
+```
+
+**2. Export** — writes monolingual XLIFF 2.2 to `l10n/xliff/<project>.xliff` (here `l10n/xliff/myApp.xliff`):
+
+```bash
+msg export
+# or: msg export --project myApp
+```
+
+The plural becomes a `pgs:switch` unit with one segment per case (abbreviated):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.2" xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0" version="2.2" srcLang="en">
+  <file id="f1" original="messages.json" srcDir="ltr">
+    <unit id="itemsCount" name="itemsCount" pgs:switch="plural:n">
+      <segment id="itemsCount_s1" pgs:case="one">
+        <source>One item</source>
+      </segment>
+      <segment id="itemsCount_s2" pgs:case="other">
+        <source>{$n} items</source>
+      </segment>
+    </unit>
+  </file>
+</xliff>
+```
+
+**3. Bilingual file for translation** — `msg import` needs `trgLang` and `<target>` elements. Typical workflow: copy the export to a locale-specific name such as `myApp.fr.xliff`, set `trgLang="fr"` on the root `<xliff>`, and add a `<target>` under **each** `<segment>` (preserving `pgs:switch` / `pgs:case`). The project’s `MsgProject` must list `fr` in `targetLocales`.
+
+```xml
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.2" xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0" version="2.2" srcLang="en" trgLang="fr">
+  <file id="f1" original="messages.json" srcDir="ltr">
+    <unit id="itemsCount" name="itemsCount" pgs:switch="plural:n">
+      <segment id="itemsCount_s1" pgs:case="one">
+        <source>One item</source>
+        <target>Un élément</target>
+      </segment>
+      <segment id="itemsCount_s2" pgs:case="other">
+        <source>{$n} items</source>
+        <target>{$n} éléments</target>
+      </segment>
+    </unit>
+  </file>
+</xliff>
+```
+
+**4. Import** — writes minimal JSON under `l10n/translations/<project>/<locale>/<resource>.json`, with one MF2 message per key rebuilt from the PGS segments:
+
+```bash
+msg import
+# or: msg import --project myApp --language fr
+```
+
+**5. Resulting French translation file** — `l10n/translations/myApp/fr/messages.json` (notes omitted; `attributes.dir` is empty unless the XLIFF `<file>` carries `trgDir`):
+
+```json
+{
+  "title": "messages",
+  "attributes": {
+    "lang": "fr",
+    "dir": "",
+    "dnt": false
+  },
+  "messages": [
+    {
+      "key": "itemsCount",
+      "value": ".input {$n :number}\n.match $n\none {{Un élément}}\n* {{{$n} éléments}}"
+    }
+  ]
+}
+```
+
 ## API Reference
 
 The CLI does not expose a programmatic API. For library usage, see [@worldware/msg](https://github.com/worldware-studios/msg).
