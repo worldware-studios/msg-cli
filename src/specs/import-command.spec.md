@@ -1,6 +1,6 @@
 ## 1. Summary
 
-The `import` command extracts translations from xliff 2.0 files and writes them to corresponding JSON files inside project name and locale directories inside `l10n/translations`. It writes a minimal JSON file in order to decrease size.
+The `import` command extracts translations from **XLIFF 2.0 or 2.2** files and writes them to corresponding JSON files inside project name and locale directories inside `l10n/translations`. It writes a minimal JSON file in order to decrease size. For units that carry **PGS** attributes (`pgs:switch` / `pgs:case`), it reconstructs a single MessageFormat 2 string per message from the segments (using `<target>` text when present); legacy single-segment units behave unchanged.
 
 **Important Note:** The `import` command involves a series of operations. The functionality for most of these operations has already been implemented in `utilities.ts`, but that functionality should be considered deprecated and should only be used as a reference. In this iteration, the functionality should be moved to command helper functions, like the other commands.
 

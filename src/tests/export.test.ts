@@ -100,8 +100,8 @@ describe("Export command", () => {
       expect(files.length).toBeGreaterThanOrEqual(1);
       expect(files).toContain("test.xliff");
       const content = readFileSync(join(xliffDir, "test.xliff"), "utf-8");
-      expect(content).toContain('xmlns="urn:oasis:names:tc:xliff:document:2.0"');
-      expect(content).toContain('version="2.0"');
+      expect(content).toContain('xmlns="urn:oasis:names:tc:xliff:document:2.2"');
+      expect(content).toContain('version="2.2"');
       expect(content).toContain("Hello");
       expect(content).toContain("World");
     });

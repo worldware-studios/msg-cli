@@ -5,6 +5,7 @@ import { pathToFileURL } from "url";
 import { XMLParser } from "fast-xml-parser";
 import { existsSync } from "fs";
 import { dynamicImportFromUrl } from "./create-resource-helpers.js";
+import { pgsImportToSelectMessage } from "./pgs-mf2.js";
 
 /** File extensions considered XLIFF files. */
 const XLIFF_EXTENSIONS = [".xliff", ".xlf"];
@@ -162,8 +163,8 @@ const xmlParser = new XMLParser({
 });
 
 /**
- * Parses XLIFF 2.0 XML string to a JavaScript object.
- * @param xml - XLIFF 2.0 XML string
+ * Parses XLIFF 2.x XML string to a JavaScript object (2.0 and 2.2 supported).
+ * @param xml - XLIFF XML string
  * @returns Parsed object
  * @throws Error if XML is malformed
  */
@@ -176,7 +177,7 @@ export function parseXliff20(xml: string): object {
     return parsed;
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to parse XLIFF";
-    throw new Error(`Malformed XLIFF 2.0: ${message}`);
+    throw new Error(`Malformed XLIFF: ${message}`);
   }
 }
 
@@ -307,11 +308,39 @@ function processUnit(
       ? unit.segment
       : [unit.segment]
     : [];
-  const targetParts: string[] = [];
-  for (const seg of segments) {
-    targetParts.push(extractSegmentText(seg));
+
+  const pgsSwitch = unit["@_pgs:switch"] as string | undefined;
+
+  let value: string;
+  if (
+    pgsSwitch &&
+    segments.length > 0 &&
+    segments.every(
+      (seg) =>
+        typeof (seg as Record<string, unknown>)["@_pgs:case"] === "string"
+    )
+  ) {
+    const importSegments = segments.map((seg) => ({
+      caseAttr: (seg as Record<string, unknown>)["@_pgs:case"] as string,
+      body: extractSegmentText(seg),
+    }));
+    const rebuilt = pgsImportToSelectMessage(pgsSwitch, importSegments);
+    if (rebuilt) {
+      value = rebuilt;
+    } else {
+      const targetParts: string[] = [];
+      for (const seg of segments) {
+        targetParts.push(extractSegmentText(seg));
+      }
+      value = targetParts.join("");
+    }
+  } else {
+    const targetParts: string[] = [];
+    for (const seg of segments) {
+      targetParts.push(extractSegmentText(seg));
+    }
+    value = targetParts.join("");
   }
-  const value = targetParts.join("");
 
   const attributes: { lang?: string; dir?: string; dnt?: boolean } = {};
   if (trgLang !== fileAttrs.trgLang) attributes.lang = trgLang || undefined;
@@ -327,7 +356,7 @@ function processUnit(
 }
 
 /**
- * Extracts MsgResource from parsed XLIFF 2.0 object for a single file element.
+ * Extracts MsgResource from parsed XLIFF 2.x object for a single file element.
  * @param fileEl - Parsed file element
  * @param xliffTrgLang - trgLang from xliff root (may be undefined for monolingual)
  * @param project - MsgProject instance

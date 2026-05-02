@@ -4,7 +4,7 @@
 
 msg-cli is a command-line tool for the [msg](https://github.com/worldware-studios/msg) library. It helps you scaffold internationalization (i18n) and localization (l10n) layout and wire up your project for use with msg.
 
-**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`, v0.2.2). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.0 in l10n/xliff), `import` (import translations from XLIFF 2.0 to JSON in l10n/translations).
+**Current status:** CLI for the msg library (npm: `@worldware/msg-cli`, v0.2.2). Commands: `init` (scaffold i18n/l10n and config), `create project` (new MsgProject in i18n/projects), `create resource` (new MsgResource in i18n/resources), `export` (serialize MsgResources to XLIFF 2.2 in l10n/xliff), `import` (import translations from XLIFF 2.0/2.2 to JSON in l10n/translations).
 
 ## Installation
 
@@ -162,7 +162,7 @@ msg create resource myProject messages --edit
 
 ### export
 
-Serialize all MsgResource files in `i18n/resources` to XLIFF 2.0 files in `l10n/xliff`, one file per project. Does not send files for translation; use your own translation workflow with the generated XLIFF. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
+Serialize all MsgResource files in `i18n/resources` to XLIFF 2.2 files in `l10n/xliff`, one file per project. Does not send files for translation; use your own translation workflow with the generated XLIFF. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
 
 ```bash
 msg export [-p <projectName>]
@@ -188,22 +188,24 @@ msg export -p myApp
 
 - Recursively finds all `.msg.js` and `.msg.ts` files under `i18n/resources`.
 - Imports each file as a MsgResource; errors if any file is invalid.
-- Groups resources by project name and writes one XLIFF 2.0 file per project to `l10n/xliff` (e.g. `myApp.xliff`).
+- Groups resources by project name and writes one XLIFF 2.2 file per project to `l10n/xliff` (e.g. `myApp.xliff`).
 - With `--project`, only that project is exported; existing other files in `l10n/xliff` are not removed.
 - If no MsgResource files are found, exits with an informational message (no error).
 - Logs each major step (finding files, importing, grouping, writing).
 
-**What is preserved in XLIFF 2.0:**
+**What is preserved in XLIFF 2.2:**
 
 - **Message keys** — Stored as unit `id` (sanitized for XML) and `name` (original key).
 - **Resource notes** — Emitted as file-level `<notes>` with category (e.g. `description`, `comment`).
 - **Resource attributes** — `dir` → file `srcDir`; `dnt` → file `translate="no"`.
 - **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
-- **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` attribute (XLIFF 2.0 text direction for the segment).
+- **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` attribute (XLIFF text direction for the segment).
+
+**Plural, gender, select (PGS) and MessageFormat 2:** Messages written in Unicode MessageFormat 2 using `.match` are exported to the [XLIFF 2.2 Plural, Gender, and Select module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html) when the selectors classify as `plural`, `ordinal`, `gender`, or `select` (see implementation in `pgs-mf2`). Such units use `xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0"`, `pgs:switch` on the `<unit>`, and one `<segment>` per variant with `pgs:case`. Other messages stay a single segment with the full MF2 string in `<source>`. Unsupported `.match` shapes fall back to that single-segment form.
 
 ### import
 
-Import translations from bilingual XLIFF 2.0 files in `l10n/xliff` to JSON files in `l10n/translations`. Expects XLIFF files with `trgLang` (target language) and translated content in `<target>` elements. Writes JSON files without notes for minimal size. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
+Import translations from bilingual XLIFF 2.0 or 2.2 files in `l10n/xliff` to JSON files in `l10n/translations`. Expects XLIFF files with `trgLang` (target language) and translated content in `<target>` elements. Writes JSON files without notes for minimal size. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first). Units with `pgs:switch` are reassembled into a single MessageFormat 2 string per message key from the segment bodies (targets when present).
 
 ```bash
 msg import [-p <projectName>] [-l <locale>]

@@ -12,11 +12,11 @@ import {
 } from "../lib/export-helpers.js";
 
 /**
- * Serializes MsgResource objects to XLIFF 2.0 files in l10n/xliff on a per-project basis.
+ * Serializes MsgResource objects to XLIFF 2.2 files in l10n/xliff on a per-project basis.
  */
 export default class Export extends Command {
   static override description =
-    "Serialize msg resources in i18n/resources to XLIFF 2.0 files in l10n/xliff (per project)";
+    "Serialize msg resources in i18n/resources to XLIFF 2.2 files in l10n/xliff (per project)";
 
   static override flags = {
     help: Flags.help({ char: "h" }),
@@ -83,7 +83,7 @@ export default class Export extends Command {
       this.log(`Filtered to project '${flags.project}'.`);
     }
 
-    this.log("Serializing to XLIFF 2.0...");
+    this.log("Serializing to XLIFF 2.2...");
     const xliffGroups = serializeResourceGroupsToXliff(groups);
 
     this.log(`Writing ${xliffGroups.length} XLIFF file(s) to ${xliffDir}...`);
