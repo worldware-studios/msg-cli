@@ -12,11 +12,11 @@ import {
 } from "../lib/import-helpers.js";
 
 /**
- * Imports translations from XLIFF 2.0 files into l10n/translations as JSON.
+ * Imports translations from XLIFF 2.0/2.2 files into l10n/translations as JSON.
  */
 export default class Import extends Command {
   static override description =
-    "Import translations from XLIFF 2.0 files in l10n/xliff to JSON in l10n/translations";
+    "Import translations from XLIFF 2.0/2.2 files in l10n/xliff to JSON in l10n/translations";
 
   static override flags = {
     help: Flags.help({ char: "h" }),

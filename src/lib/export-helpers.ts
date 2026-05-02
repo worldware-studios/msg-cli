@@ -3,6 +3,7 @@ import { readdir, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import { dynamicImportFromUrl } from "./create-resource-helpers.js";
+import { selectMessageToPgsExport } from "./pgs-mf2.js";
 
 /** Object grouping resources with their project name (spec: resource group object). */
 export interface ResourceGroup {
@@ -26,7 +27,8 @@ function isMsgResourceLike(value: unknown): value is MsgResource {
   );
 }
 
-const XLIFF20_NS = "urn:oasis:names:tc:xliff:document:2.0";
+const XLIFF22_NS = "urn:oasis:names:tc:xliff:document:2.2";
+const PGS_NS = "urn:oasis:names:tc:xliff:pgs:1.0";
 
 /**
  * Recursively finds all MsgResource files inside a directory (e.g. i18n/resources).
@@ -193,15 +195,16 @@ function renderNotes(
 }
 
 /**
- * Serializes a single ResourceGroup to an XLIFF 2.0 document string.
+ * Serializes a single ResourceGroup to an XLIFF 2.2 document string.
  * Preserves message keys (as unit id and name), source text, resource and message
  * notes, attributes (lang, dir, dnt), and resource/file structure.
+ * MessageFormat 2 `.match` messages that map to PGS use `pgs:switch` / `pgs:case`.
  */
-function resourceGroupToXliff20(group: ResourceGroup): string {
+function resourceGroupToXliff22(group: ResourceGroup): string {
   const srcLang = group.resources[0]?.attributes?.lang ?? "en";
   const parts: string[] = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<xliff xmlns="${XLIFF20_NS}" version="2.0" srcLang="${escapeXml(srcLang)}">`,
+    `<xliff xmlns="${XLIFF22_NS}" xmlns:pgs="${PGS_NS}" version="2.2" srcLang="${escapeXml(srcLang)}">`,
   ];
   let fileIndex = 0;
   for (const resource of group.resources) {
@@ -242,6 +245,12 @@ function resourceGroupToXliff20(group: ResourceGroup): string {
       if (msgAttr?.dir) {
         msgAttrs.push(`srcDir="${escapeXml(msgAttr.dir)}"`);
       }
+
+      const pgsExport = selectMessageToPgsExport(msg.value);
+      if (pgsExport) {
+        msgAttrs.push(`pgs:switch="${escapeXml(pgsExport.switchAttr)}"`);
+      }
+
       parts.push(`    <unit ${msgAttrs.join(" ")}>`);
 
       const msgNotes = (msg as { notes?: MsgNoteLike[] }).notes ?? [];
@@ -251,9 +260,20 @@ function resourceGroupToXliff20(group: ResourceGroup): string {
         );
       }
 
-      parts.push("      <segment>");
-      parts.push(`        <source>${escapeXml(msg.value)}</source>`);
-      parts.push("      </segment>");
+      if (pgsExport) {
+        pgsExport.segments.forEach((seg, segIdx) => {
+          const segId = `${unitId}_s${segIdx + 1}`;
+          parts.push(
+            `      <segment id="${escapeXml(segId)}" pgs:case="${escapeXml(seg.caseAttr)}">`
+          );
+          parts.push(`        <source>${escapeXml(seg.sourcePattern)}</source>`);
+          parts.push("      </segment>");
+        });
+      } else {
+        parts.push("      <segment>");
+        parts.push(`        <source>${escapeXml(msg.value)}</source>`);
+        parts.push("      </segment>");
+      }
       parts.push("    </unit>");
     });
     parts.push("  </file>");
@@ -263,7 +283,7 @@ function resourceGroupToXliff20(group: ResourceGroup): string {
 }
 
 /**
- * Serializes each resource group to an XLIFF 2.0 string.
+ * Serializes each resource group to an XLIFF 2.2 string.
  * @param groups - Array of resource group objects
  * @returns Array of xliff group objects { project, xliff }
  */
@@ -272,7 +292,7 @@ export function serializeResourceGroupsToXliff(
 ): XliffGroup[] {
   return groups.map((group) => ({
     project: group.project,
-    xliff: resourceGroupToXliff20(group),
+    xliff: resourceGroupToXliff22(group),
   }));
 }
 

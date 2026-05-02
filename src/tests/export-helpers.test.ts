@@ -234,7 +234,7 @@ describe("export-helpers", () => {
       expect(result).toEqual([]);
     });
 
-    test("produces valid XLIFF 2.0 with xmlns 2.0", () => {
+    test("produces valid XLIFF 2.2 with PGS namespace", () => {
       const res = createTestResource("TestRes", "myProj", [
         { key: "hello", value: "Hello" },
       ]);
@@ -245,11 +245,31 @@ describe("export-helpers", () => {
       expect(result).toHaveLength(1);
       expect(result[0].project).toBe("myProj");
       const xliff = result[0].xliff;
-      expect(xliff).toContain('xmlns="urn:oasis:names:tc:xliff:document:2.0"');
-      expect(xliff).toContain('version="2.0"');
+      expect(xliff).toContain('xmlns="urn:oasis:names:tc:xliff:document:2.2"');
+      expect(xliff).toContain('xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0"');
+      expect(xliff).toContain('version="2.2"');
       expect(xliff).toContain("<source>Hello</source>");
       expect(xliff).toContain("<unit ");
       expect(xliff).toContain("<segment>");
+    });
+
+    test("emits PGS multi-segment unit for classifiable .match messages", () => {
+      const pluralSrc = `.input {$n :number}
+.match $n
+one {{One item}}
+* {{{$n} items}}`;
+      const res = createTestResource("Res", "proj", [
+        { key: "itemsCount", value: pluralSrc },
+      ]);
+      const result = serializeResourceGroupsToXliff([
+        { project: "proj", resources: [res] },
+      ]);
+      const xliff = result[0].xliff;
+      expect(xliff).toContain('pgs:switch="plural:n"');
+      expect(xliff).toContain('pgs:case="one"');
+      expect(xliff).toContain('pgs:case="other"');
+      expect(xliff).toMatch(/<segment[^>]*id="[^"]*_s1"/);
+      expect(xliff).toMatch(/<segment[^>]*id="[^"]*_s2"/);
     });
 
     test("includes message key and value in unit/segment", () => {

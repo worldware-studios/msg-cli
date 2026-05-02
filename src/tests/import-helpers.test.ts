@@ -22,6 +22,7 @@ import {
   importMsgProject,
   type ImportResult,
 } from "../lib/import-helpers.js";
+import { messagesStructurallyEqual } from "../lib/pgs-mf2.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_XLIFF = join(__dirname, "fixtures", "xliff");
@@ -316,6 +317,48 @@ describe("import-helpers", () => {
       expect(data.messages).toHaveLength(2);
       expect(data.messages![0]).toMatchObject({ key: "hello", value: "你好" });
       expect(data.messages![1].value).toBe("世界");
+    });
+
+    test("rebuilds MF2 .match message from PGS segments (target text)", () => {
+      const expectedZh = `.input {$n :number}
+.match $n
+one {{一}}
+* {{多}}`;
+      const fileEl = {
+        "@_original": "P.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "countMsg",
+          "@_pgs:switch": "plural:n",
+          segment: [
+            {
+              "@_id": "u1_s1",
+              "@_pgs:case": "one",
+              source: "One",
+              target: "一",
+            },
+            {
+              "@_id": "u1_s2",
+              "@_pgs:case": "other",
+              source: "Many",
+              target: "多",
+            },
+          ],
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result).toBeInstanceOf(MsgResource);
+      const data = result!.getData(true);
+      expect(data.messages).toHaveLength(1);
+      expect(messagesStructurallyEqual(data.messages![0]!.value, expectedZh)).toBe(
+        true
+      );
     });
 
     test("extracts notes from units", () => {
