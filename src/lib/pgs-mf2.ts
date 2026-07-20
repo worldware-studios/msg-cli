@@ -79,12 +79,22 @@ function getFunctionName(expr: {
   return expr.functionRef?.name;
 }
 
+function getOption(
+  opts: Map<string, unknown> | Record<string, unknown> | undefined,
+  key: string
+): unknown {
+  if (!opts) return undefined;
+  if (opts instanceof Map) return opts.get(key);
+  return opts[key];
+}
+
 function getSelectOptionOrdinal(expr: {
-  functionRef?: { name?: string; options?: Map<string, unknown> };
+  functionRef?: {
+    name?: string;
+    options?: Map<string, unknown> | Record<string, unknown>;
+  };
 }): boolean {
-  const opts = expr.functionRef?.options;
-  if (!opts || !(opts instanceof Map)) return false;
-  const sel = opts.get("select");
+  const sel = getOption(expr.functionRef?.options, "select");
   if (!sel || typeof sel !== "object" || sel === null) return false;
   if ((sel as { type?: string }).type !== "literal") return false;
   return (sel as { value?: string }).value === "ordinal";

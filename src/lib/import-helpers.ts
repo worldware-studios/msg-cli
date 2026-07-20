@@ -5,6 +5,8 @@ import { pathToFileURL } from "url";
 import { XMLParser } from "fast-xml-parser";
 import { existsSync } from "fs";
 import { dynamicImportFromUrl } from "./create-resource-helpers.js";
+import { unitTypeToFormat, type MsgFormat } from "./msg-format.js";
+import { pgsImportToMf1Message } from "./pgs-mf1.js";
 import { pgsImportToSelectMessage } from "./pgs-mf2.js";
 
 /** File extensions considered XLIFF files. */
@@ -235,17 +237,19 @@ interface FileLevelAttrs {
   translate: string;
 }
 
+type ImportedMessage = {
+  key: string;
+  value: string;
+  attributes: { lang?: string; dir?: string; dnt?: boolean; format?: MsgFormat };
+  notes: Array<{ type: string; content: string }>;
+};
+
 /** Processes a flat array of unit elements. */
 function processUnitsFromItems(
   units: unknown[],
   fileAttrs: FileLevelAttrs
-): Array<{ key: string; value: string; attributes: { lang?: string; dir?: string; dnt?: boolean }; notes: Array<{ type: string; content: string }> }> {
-  const messages: Array<{
-    key: string;
-    value: string;
-    attributes: { lang?: string; dir?: string; dnt?: boolean };
-    notes: Array<{ type: string; content: string }>;
-  }> = [];
+): ImportedMessage[] {
+  const messages: ImportedMessage[] = [];
   for (const u of units) {
     const msg = processUnit(u as Record<string, unknown>, fileAttrs);
     if (msg) messages.push(msg);
@@ -257,13 +261,8 @@ function processUnitsFromItems(
 function processGroupsForMessages(
   groups: unknown[],
   fileAttrs: FileLevelAttrs
-): Array<{ key: string; value: string; attributes: { lang?: string; dir?: string; dnt?: boolean }; notes: Array<{ type: string; content: string }> }> {
-  const messages: Array<{
-    key: string;
-    value: string;
-    attributes: { lang?: string; dir?: string; dnt?: boolean };
-    notes: Array<{ type: string; content: string }>;
-  }> = [];
+): ImportedMessage[] {
+  const messages: ImportedMessage[] = [];
   for (const item of groups) {
     const obj = item as Record<string, unknown>;
     if (obj.unit) {
@@ -281,12 +280,13 @@ function processGroupsForMessages(
 function processUnit(
   unit: Record<string, unknown>,
   fileAttrs: FileLevelAttrs
-): { key: string; value: string; attributes: { lang?: string; dir?: string; dnt?: boolean }; notes: Array<{ type: string; content: string }> } | null {
+): ImportedMessage | null {
   const name = (unit["@_name"] ?? unit["@_id"] ?? "") as string;
   const trgLang = (unit["@_trgLang"] ?? fileAttrs.trgLang) as string;
   const trgDir = (unit["@_trgDir"] ?? fileAttrs.trgDir) as string | undefined;
   const translate = ((unit["@_translate"] ?? "yes") as string).toLowerCase();
   const dnt = translate === "no" || translate === "false";
+  const format = unitTypeToFormat(unit["@_type"] as string | undefined);
 
   const fileTranslate = (fileAttrs.translate ?? "yes").toLowerCase();
   const fileDnt = fileTranslate === "no" || fileTranslate === "false";
@@ -324,7 +324,10 @@ function processUnit(
       caseAttr: (seg as Record<string, unknown>)["@_pgs:case"] as string,
       body: extractSegmentText(seg),
     }));
-    const rebuilt = pgsImportToSelectMessage(pgsSwitch, importSegments);
+    const rebuilt =
+      format === "MF1"
+        ? pgsImportToMf1Message(pgsSwitch, importSegments)
+        : pgsImportToSelectMessage(pgsSwitch, importSegments);
     if (rebuilt) {
       value = rebuilt;
     } else {
@@ -342,10 +345,16 @@ function processUnit(
     value = targetParts.join("");
   }
 
-  const attributes: { lang?: string; dir?: string; dnt?: boolean } = {};
+  const attributes: {
+    lang?: string;
+    dir?: string;
+    dnt?: boolean;
+    format?: MsgFormat;
+  } = {};
   if (trgLang !== fileAttrs.trgLang) attributes.lang = trgLang || undefined;
   if (trgDir !== fileAttrs.trgDir) attributes.dir = trgDir || undefined;
   if (dnt !== fileDnt) attributes.dnt = dnt;
+  if (format) attributes.format = format;
 
   return {
     key: name,

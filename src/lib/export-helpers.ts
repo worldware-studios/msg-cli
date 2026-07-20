@@ -1,8 +1,14 @@
-import { MsgResource } from "@worldware/msg";
+import { MsgResource, MSG_DEFAULT_FORMAT } from "@worldware/msg";
 import { readdir, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import { dynamicImportFromUrl } from "./create-resource-helpers.js";
+import {
+  formatToUnitType,
+  resolveMessageFormat,
+  type MsgFormat,
+} from "./msg-format.js";
+import { mf1MessageToPgsExport } from "./pgs-mf1.js";
 import { selectMessageToPgsExport } from "./pgs-mf2.js";
 
 /** Object grouping resources with their project name (spec: resource group object). */
@@ -129,6 +135,7 @@ interface MsgAttributesLike {
   lang?: string;
   dir?: string;
   dnt?: boolean;
+  format?: MsgFormat;
 }
 
 /**
@@ -212,6 +219,13 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
     fileIndex += 1;
     const fileId = `f${fileIndex}`;
     const attrs: MsgAttributesLike = resource.attributes ?? {};
+    const projectFormat = (resource.getProject().format ??
+      MSG_DEFAULT_FORMAT) as MsgFormat;
+    const resourceFormat = resolveMessageFormat(
+      attrs.format,
+      undefined,
+      projectFormat
+    );
     const fileAttrs: string[] = [
       `id="${fileId}"`,
       `original="${escapeXml(orig)}"`,
@@ -246,7 +260,19 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
         msgAttrs.push(`srcDir="${escapeXml(msgAttr.dir)}"`);
       }
 
-      const pgsExport = selectMessageToPgsExport(msg.value);
+      const msgFormat = resolveMessageFormat(
+        msgAttr?.format,
+        resourceFormat,
+        projectFormat
+      );
+      msgAttrs.push(`type="${escapeXml(formatToUnitType(msgFormat))}"`);
+
+      const pgsExport =
+        msgFormat === "MF1"
+          ? mf1MessageToPgsExport(msg.value)
+          : msgFormat === "MF2"
+            ? selectMessageToPgsExport(msg.value)
+            : null;
       if (pgsExport) {
         msgAttrs.push(`pgs:switch="${escapeXml(pgsExport.switchAttr)}"`);
       }
