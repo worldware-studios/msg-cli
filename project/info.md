@@ -69,7 +69,9 @@ Note: there is currently no `lint` npm script. User-facing docs also live in
   pushes to `main`. A `verify` job runs type-check, tests, and build (plus
   dependency signature audit); a `release` job builds again and runs
   `npx semantic-release` when verify succeeds (GitHub release + npm publish via
-  OIDC trusted publishing / provenance).
+  OIDC trusted publishing / provenance). `package.json` also defines
+  `"prepack": "npm run build"` so `dist/` is always produced before
+  `npm pack` / publish, even if a CI build step is skipped.
 - **`.github/workflows/docs.yml` (Deploy static content to Pages):** runs on
   pushes to `main` (and `workflow_dispatch`). Runs `npm run docs` and deploys
   the generated `docs/` folder to GitHub Pages.

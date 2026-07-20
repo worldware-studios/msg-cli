@@ -8,6 +8,7 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsup",
+    "prepack": "npm run build",
     "coverage": "vitest run --coverage",
     "docs": "typedoc --entryPointStrategy expand src/commands src/lib"
   },
