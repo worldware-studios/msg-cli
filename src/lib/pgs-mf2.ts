@@ -217,18 +217,12 @@ export interface PgsSegmentExport {
 }
 
 /**
- * If `source` is a classifiable `.match` message, returns PGS attributes and
- * per-variant segments; otherwise null (caller falls back to plain XLIFF).
+ * If `msg` is a classifiable MF2 select (`.match`) data model, returns PGS
+ * attributes and per-variant segments; otherwise null.
  */
-export function selectMessageToPgsExport(
-  source: string
+export function selectMessageDataToPgsExport(
+  msg: unknown
 ): { switchAttr: string; segments: PgsSegmentExport[] } | null {
-  let msg: unknown;
-  try {
-    msg = parseMessage(source);
-  } catch {
-    return null;
-  }
   if (!isSelectMessage(msg as never)) return null;
 
   const classification = classifySelectMessageForPgs(
@@ -248,9 +242,7 @@ export function selectMessageToPgsExport(
     for (let ki = 0; ki < classification.length; ki++) {
       const key = variant.keys[ki];
       if (!key) return null;
-      caseParts.push(
-        mf2KeyToPgsToken(key, classification[ki]!.kind)
-      );
+      caseParts.push(mf2KeyToPgsToken(key, classification[ki]!.kind));
     }
     segments.push({
       caseAttr: caseParts.join(" "),
@@ -259,6 +251,22 @@ export function selectMessageToPgsExport(
   }
 
   return { switchAttr, segments };
+}
+
+/**
+ * If `source` is a classifiable `.match` message, returns PGS attributes and
+ * per-variant segments; otherwise null (caller falls back to plain XLIFF).
+ */
+export function selectMessageToPgsExport(
+  source: string
+): { switchAttr: string; segments: PgsSegmentExport[] } | null {
+  let msg: unknown;
+  try {
+    msg = parseMessage(source);
+  } catch {
+    return null;
+  }
+  return selectMessageDataToPgsExport(msg);
 }
 
 export interface PgsSegmentImport {
