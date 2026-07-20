@@ -66,8 +66,10 @@ Note: there is currently no `lint` npm script. User-facing docs also live in
   `npm ci`, `npx tsc --noEmit`, `npm test`, and `npm run build`. PRs must be
   green here before review.
 - **`.github/workflows/verify-and-release.yml` (Verify and Release):** runs on
-  pushes to `main`. A `verify` job runs `npm test` (plus dependency signature
-  audit); a `release` job runs `npx semantic-release` when verify succeeds.
+  pushes to `main`. A `verify` job runs type-check, tests, and build (plus
+  dependency signature audit); a `release` job builds again and runs
+  `npx semantic-release` when verify succeeds (GitHub release + npm publish via
+  OIDC trusted publishing / provenance).
 - **`.github/workflows/docs.yml` (Deploy static content to Pages):** runs on
   pushes to `main` (and `workflow_dispatch`). Runs `npm run docs` and deploys
   the generated `docs/` folder to GitHub Pages.

@@ -2,7 +2,7 @@ name: Verify and Release
 on:
   push:
     branches:
-      - main # or master
+      - main
 
 permissions:
   contents: read # for checkout
@@ -20,12 +20,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: npm
       - name: Install dependencies
         run: npm clean-install
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
-      - name: Run lint, tests, and other verification
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Test
         run: npm test
+      - name: Build
+        run: npm run build
 
   release:
     name: Release
@@ -44,12 +49,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "lts/*"
+          node-version-file: .nvmrc
+          cache: npm
+          registry-url: https://registry.npmjs.org
       - name: Install dependencies
         run: npm clean-install
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
+      - name: Build
+        run: npm run build
       - name: Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release # <- The Run Commnand
+        run: npx semantic-release
