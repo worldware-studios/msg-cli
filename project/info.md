@@ -25,7 +25,9 @@ process in `project/process.md`. Keep it accurate — the process depends on it.
   (config in `vite.config.mjs`).
 - **Bundler:** [tsup](https://tsup.egoist.dev) (config in `tsup.config.ts`);
   emits both CJS (`.cjs`) and ESM (`.mjs`) plus type declarations to `dist/`.
-- **Key dependencies:** `@worldware/msg`, `messageformat`, `fast-xml-parser`.
+- **Key dependencies:** `@worldware/msg`, `messageformat`,
+  `@messageformat/icu-messageformat-1`, `@messageformat/parser`,
+  `fast-xml-parser`.
 
 ## Repository structure
 
@@ -35,6 +37,7 @@ process in `project/process.md`. Keep it accurate — the process depends on it.
   `import.ts`, and the `create` topic (`create/project.ts`, `create/resource.ts`).
 - `src/lib/` — shared helpers: `init-helpers.ts`, `export-helpers.ts`,
   `import-helpers.ts`, `create-project-helpers.ts`, `create-resource-helpers.ts`,
+  `msg-format.ts` (MsgFormat ↔ XLIFF `unit@type`), `pgs-mf1.ts` (ICU MF1 ↔ PGS),
   and `pgs-mf2.ts` (MessageFormat 2 ↔ XLIFF 2.2 PGS conversion).
 - `src/specs/` — Markdown command specifications and `_template*.spec.md`
   templates (excluded from the build).

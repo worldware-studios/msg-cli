@@ -200,12 +200,22 @@ msg export -p myApp
 - **Resource attributes** — `dir` → file `srcDir`; `dnt` → file `translate="no"`.
 - **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
 - **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` attribute (XLIFF text direction for the segment).
+- **Message format** — Resolved `format` (`NONE` / `MF1` / `MF2`, including inheritance from resource/project) is written as the unit `type` attribute using the XLIFF custom form `msg:NONE`, `msg:MF1`, or `msg:MF2`.
 
-**Plural, gender, select (PGS) and MessageFormat 2:** Messages written in Unicode MessageFormat 2 using `.match` are exported to the [XLIFF 2.2 Plural, Gender, and Select module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html) when the selectors classify as `plural`, `ordinal`, `gender`, or `select` (see implementation in `pgs-mf2`). Such units use `xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0"`, `pgs:switch` on the `<unit>`, and one `<segment>` per variant with `pgs:case`. Other messages stay a single segment with the full MF2 string in `<source>`. Unsupported `.match` shapes fall back to that single-segment form.
+**Plural, gender, select (PGS):** Classifiable plural/select messages are exported to the [XLIFF 2.2 Plural, Gender, and Select module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html) (`xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0"`): `pgs:switch` on the `<unit>`, and one `<segment>` per variant with `pgs:case`.
+
+- **MF2** — Unicode MessageFormat 2 `.match` messages (see `pgs-mf2`). Segment bodies keep MF2 pattern text. Unsupported `.match` shapes fall back to a single segment with the full string in `<source>`.
+- **MF1** — ICU MessageFormat 1 `plural` / `selectordinal` / `select` messages (see `pgs-mf1`). Segment bodies use ICU-friendly text (`#` for the plural/ordinal variable, `{name}` for others).
+- **NONE** — Always a single segment with the raw string (no PGS).
 
 ### import
 
-Import translations from bilingual XLIFF 2.0 or 2.2 files in `l10n/xliff` to JSON files in `l10n/translations`. Expects XLIFF files with `trgLang` (target language) and translated content in `<target>` elements. Writes JSON files without notes for minimal size. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first). Units with `pgs:switch` are reassembled into a single MessageFormat 2 string per message key from the segment bodies (targets when present).
+Import translations from bilingual XLIFF 2.0 or 2.2 files in `l10n/xliff` to JSON files in `l10n/translations`. Expects XLIFF files with `trgLang` (target language) and translated content in `<target>` elements. Writes JSON files without notes for minimal size. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
+
+**Format and PGS on import:**
+
+- Unit `type` of `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare `NONE` / `MF1` / `MF2`) is restored as the message `attributes.format`.
+- Units with `pgs:switch` are reassembled from segment bodies (`<target>` when present): **MF1** → nested ICU MessageFormat 1; otherwise (including missing type) → MessageFormat 2 `.match`. Single-segment units are unchanged.
 
 ```bash
 msg import [-p <projectName>] [-l <locale>]
@@ -246,9 +256,9 @@ msg import -l zh
 
 ### Example: plural messages (XLIFF 2.2 PGS)
 
-Plural (and other classifiable `.match`) messages use the [XLIFF 2.2 PGS module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html): export splits them into one `<segment>` per variant (`pgs:case`), and import merges `<target>` text back into a single MessageFormat 2 string per message key.
+Plural (and other classifiable select) messages use the [XLIFF 2.2 PGS module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html): export splits them into one `<segment>` per variant (`pgs:case`), and import merges `<target>` text back into a single message string per key. The unit `type` (`msg:MF1` or `msg:MF2`) selects ICU MessageFormat 1 vs MessageFormat 2 reconstruction.
 
-**1. Message in the MsgResource** (Unicode MessageFormat 2 with `.input` / `.match` on a plural):
+**1. Message in the MsgResource** (MF2 `.match`, or MF1 `{count, plural, ...}` with `format: "MF1"`):
 
 ```js
 // i18n/resources/messages.msg.js — excerpt
@@ -271,7 +281,7 @@ The plural becomes a `pgs:switch` unit with one segment per case (abbreviated):
 <?xml version="1.0" encoding="UTF-8"?>
 <xliff xmlns="urn:oasis:names:tc:xliff:document:2.2" xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0" version="2.2" srcLang="en">
   <file id="f1" original="messages.json" srcDir="ltr">
-    <unit id="itemsCount" name="itemsCount" pgs:switch="plural:n">
+    <unit id="itemsCount" name="itemsCount" type="msg:MF2" pgs:switch="plural:n">
       <segment id="itemsCount_s1" pgs:case="one">
         <source>One item</source>
       </segment>
@@ -288,7 +298,7 @@ The plural becomes a `pgs:switch` unit with one segment per case (abbreviated):
 ```xml
 <xliff xmlns="urn:oasis:names:tc:xliff:document:2.2" xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0" version="2.2" srcLang="en" trgLang="fr">
   <file id="f1" original="messages.json" srcDir="ltr">
-    <unit id="itemsCount" name="itemsCount" pgs:switch="plural:n">
+    <unit id="itemsCount" name="itemsCount" type="msg:MF2" pgs:switch="plural:n">
       <segment id="itemsCount_s1" pgs:case="one">
         <source>One item</source>
         <target>Un élément</target>
@@ -302,7 +312,7 @@ The plural becomes a `pgs:switch` unit with one segment per case (abbreviated):
 </xliff>
 ```
 
-**4. Import** — writes minimal JSON under `l10n/translations/<project>/<locale>/<resource>.json`, with one MF2 message per key rebuilt from the PGS segments:
+**4. Import** — writes minimal JSON under `l10n/translations/<project>/<locale>/<resource>.json`, with one message per key rebuilt from the PGS segments (MF2 `.match` when `type` is `msg:MF2` or omitted; ICU MF1 when `type` is `msg:MF1`):
 
 ```bash
 msg import
@@ -343,7 +353,7 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 Source layout:
 
 - `src/commands/` — CLI commands (init, export, import, create/project, create/resource).
-- `src/lib/` — Shared utilities: init-helpers, export-helpers, import-helpers, create-project-helpers, create-resource-helpers.
+- `src/lib/` — Shared utilities: init-helpers, export-helpers, import-helpers, create-project-helpers, create-resource-helpers, msg-format, pgs-mf1, pgs-mf2.
 - `src/tests/` — Vitest tests and fixtures.
 
 ## License
