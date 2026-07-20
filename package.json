@@ -35,8 +35,10 @@
     "topicSeparator": " "
   },
   "dependencies": {
+    "@messageformat/icu-messageformat-1": "^0.12.0",
+    "@messageformat/parser": "^5.1.1",
     "@oclif/core": "^3.21.2",
-    "@worldware/msg": "^0.7.0",
+    "@worldware/msg": "^0.8.1",
     "fast-xml-parser": "^5.3.4",
     "messageformat": "^4.0.0-10"
   },
