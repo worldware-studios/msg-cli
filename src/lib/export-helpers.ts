@@ -9,7 +9,10 @@ import {
   type MsgFormat,
 } from "./msg-format.js";
 import { mf1MessageToPgsExport } from "./pgs-mf1.js";
-import { selectMessageToPgsExport } from "./pgs-mf2.js";
+import {
+  selectMessageToPgsExport,
+  type PgsSegmentExport,
+} from "./pgs-mf2.js";
 
 /** Object grouping resources with their project name (spec: resource group object). */
 export interface ResourceGroup {
@@ -202,10 +205,24 @@ function renderNotes(
 }
 
 /**
+ * Maps a message to PGS export data based on its resolved format.
+ * NONE and unclassified messages return null (single-segment fallback).
+ */
+function pgsExportForFormat(
+  format: MsgFormat,
+  value: string
+): { switchAttr: string; segments: PgsSegmentExport[] } | null {
+  if (format === "MF1") return mf1MessageToPgsExport(value);
+  if (format === "MF2") return selectMessageToPgsExport(value);
+  return null;
+}
+
+/**
  * Serializes a single ResourceGroup to an XLIFF 2.2 document string.
  * Preserves message keys (as unit id and name), source text, resource and message
  * notes, attributes (lang, dir, dnt), and resource/file structure.
- * MessageFormat 2 `.match` messages that map to PGS use `pgs:switch` / `pgs:case`.
+ * MessageFormat 2 `.match` and MF1 ICU plural/select messages that map to PGS
+ * use `pgs:switch` / `pgs:case`; resolved format is written as unit `type`.
  */
 function resourceGroupToXliff22(group: ResourceGroup): string {
   const srcLang = group.resources[0]?.attributes?.lang ?? "en";
@@ -267,12 +284,7 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
       );
       msgAttrs.push(`type="${escapeXml(formatToUnitType(msgFormat))}"`);
 
-      const pgsExport =
-        msgFormat === "MF1"
-          ? mf1MessageToPgsExport(msg.value)
-          : msgFormat === "MF2"
-            ? selectMessageToPgsExport(msg.value)
-            : null;
+      const pgsExport = pgsExportForFormat(msgFormat, msg.value);
       if (pgsExport) {
         msgAttrs.push(`pgs:switch="${escapeXml(pgsExport.switchAttr)}"`);
       }

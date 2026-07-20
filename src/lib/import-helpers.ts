@@ -311,13 +311,8 @@ function processUnit(
 
   const pgsSwitch = unit["@_pgs:switch"] as string | undefined;
 
-  const joinSegmentTexts = (): string => {
-    const parts: string[] = [];
-    for (const seg of segments) {
-      parts.push(extractSegmentText(seg));
-    }
-    return parts.join("");
-  };
+  const joinSegmentTexts = (): string =>
+    segments.map((seg) => extractSegmentText(seg)).join("");
 
   let value: string;
   if (

@@ -50,7 +50,7 @@ export type VariantKey =
   | { type: "literal"; value: string };
 
 /** Parsed MF2 select (`.match`) message shape from `messageformat`. */
-type SelectMessage = {
+export type SelectMessage = {
   type: "select";
   declarations: unknown[];
   selectors: Array<{ type: string; name?: string }>;
@@ -142,7 +142,10 @@ export function classifySelectMessageForPgs(
 
     const expr = decl.value as {
       type?: string;
-      functionRef?: { name?: string; options?: Map<string, unknown> };
+      functionRef?: {
+        name?: string;
+        options?: Map<string, unknown> | Record<string, unknown>;
+      };
     };
     if (expr.type !== "expression") return null;
 
