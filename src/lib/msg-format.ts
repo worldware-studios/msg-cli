@@ -5,10 +5,9 @@
  * (see XLIFF 2.2 Core §3.3.1.40). We use the `msg:` authority prefix.
  */
 
-import { MSG_DEFAULT_FORMAT } from "@worldware/msg";
+import { MSG_DEFAULT_FORMAT, type MsgFormat } from "@worldware/msg";
 
-/** Message format values supported by `@worldware/msg`. */
-export type MsgFormat = "NONE" | "MF1" | "MF2";
+export type { MsgFormat };
 
 const MSG_TYPE_PREFIX = "msg";
 
@@ -56,6 +55,6 @@ export function resolveMessageFormat(
     messageFormat ??
     resourceFormat ??
     projectFormat ??
-    (MSG_DEFAULT_FORMAT as MsgFormat)
+    MSG_DEFAULT_FORMAT
   );
 }

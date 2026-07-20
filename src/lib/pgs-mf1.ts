@@ -3,7 +3,8 @@
  * XLIFF 2.2 PGS (`pgs:switch` / `pgs:case`).
  *
  * Export path: MF1 → MF2 data model (via `@messageformat/icu-messageformat-1`)
- * → shared PGS classification used by `pgs-mf2.ts`.
+ * → shared PGS classification used by `pgs-mf2.ts`, with segment bodies
+ * rewritten to ICU-friendly text (`#` / `{name}`).
  * Import path: PGS → nested ICU MF1 string.
  */
 
@@ -22,13 +23,25 @@ import {
 /**
  * If `source` is an MF1 plural/selectordinal/select message that maps to PGS,
  * returns switch/case segments; otherwise null (caller falls back to plain XLIFF).
+ * Segment bodies use ICU MF1 conventions (`#` for plural/ordinal vars).
  */
 export function mf1MessageToPgsExport(
   source: string
 ): { switchAttr: string; segments: PgsSegmentExport[] } | null {
   try {
     const data = mf1ToMessageData(parse(source));
-    return selectMessageDataToPgsExport(data);
+    const exp = selectMessageDataToPgsExport(data);
+    if (!exp) return null;
+    const parsedSwitch = parsePgsSwitch(exp.switchAttr);
+    if (!parsedSwitch) return null;
+    const hashVars = pluralVarNames(parsedSwitch);
+    return {
+      switchAttr: exp.switchAttr,
+      segments: exp.segments.map((seg) => ({
+        caseAttr: seg.caseAttr,
+        sourcePattern: segmentBodyToMf1(seg.sourcePattern, hashVars),
+      })),
+    };
   } catch {
     return null;
   }

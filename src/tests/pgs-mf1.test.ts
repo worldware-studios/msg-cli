@@ -13,6 +13,8 @@ describe("pgs-mf1", () => {
     expect(exp!.segments).toHaveLength(2);
     expect(exp!.segments[0]!.caseAttr).toBe("one");
     expect(exp!.segments[1]!.caseAttr).toBe("other");
+    expect(exp!.segments[0]!.sourcePattern).toBe("# file");
+    expect(exp!.segments[1]!.sourcePattern).toBe("# files");
   });
 
   test("export selectordinal uses ordinal switch", () => {

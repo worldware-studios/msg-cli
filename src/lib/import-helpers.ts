@@ -311,6 +311,14 @@ function processUnit(
 
   const pgsSwitch = unit["@_pgs:switch"] as string | undefined;
 
+  const joinSegmentTexts = (): string => {
+    const parts: string[] = [];
+    for (const seg of segments) {
+      parts.push(extractSegmentText(seg));
+    }
+    return parts.join("");
+  };
+
   let value: string;
   if (
     pgsSwitch &&
@@ -328,21 +336,9 @@ function processUnit(
       format === "MF1"
         ? pgsImportToMf1Message(pgsSwitch, importSegments)
         : pgsImportToSelectMessage(pgsSwitch, importSegments);
-    if (rebuilt) {
-      value = rebuilt;
-    } else {
-      const targetParts: string[] = [];
-      for (const seg of segments) {
-        targetParts.push(extractSegmentText(seg));
-      }
-      value = targetParts.join("");
-    }
+    value = rebuilt ?? joinSegmentTexts();
   } else {
-    const targetParts: string[] = [];
-    for (const seg of segments) {
-      targetParts.push(extractSegmentText(seg));
-    }
-    value = targetParts.join("");
+    value = joinSegmentTexts();
   }
 
   const attributes: {

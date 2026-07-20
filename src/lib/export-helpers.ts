@@ -222,8 +222,8 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
     const projectFormat = (resource.getProject().format ??
       MSG_DEFAULT_FORMAT) as MsgFormat;
     const resourceFormat = resolveMessageFormat(
-      attrs.format,
       undefined,
+      attrs.format,
       projectFormat
     );
     const fileAttrs: string[] = [
