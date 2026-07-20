@@ -93,6 +93,15 @@ traceability through the phases instead.
 - Meta-changes to `project/process.md` or `project/rules.md` belong in a
   separate PR from feature work.
 
+## Dependencies
+
+When bumping `@worldware/msg` or other sibling packages, verify the published
+npm tarball includes `dist/` before relying on it — e.g.
+`npm pack @worldware/pkg@version --dry-run` and confirm dist files are listed.
+Sibling repos now run `"prepack": "npm run build"` so pack/publish always
+produces build output (msg-cli: PR #21; `@worldware/msg`: worldware-studios/msg#46,
+after v0.8.0 shipped without `dist/`).
+
 ## Failure handling
 
 - If tests cannot be made to pass, or the chosen approach proves wrong

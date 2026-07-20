@@ -56,10 +56,13 @@ keep momentum on the lightweight track.
 4. Stub out command class properties (`description`, `flags`, `args`, `run`)
    and helper function signatures, defining input and output types.
 5. Create failing unit tests in the appropriate files under `src/tests/`.
-6. Briefly explain the scaffolding and tests to the user and ask for feedback.
-7. Commit the scaffolding in small, coherent commits prefixed with `scaffold:`
+6. Wire stub helpers into real call sites (e.g. export/import command paths)
+   when needed so integration tests fail for the right reason — not only unit
+   tests against isolated stubs.
+7. Briefly explain the scaffolding and tests to the user and ask for feedback.
+8. Commit the scaffolding in small, coherent commits prefixed with `scaffold:`
    (see `project/rules.md`).
-8. Push the branch and open a **draft pull request** whose title follows
+9. Push the branch and open a **draft pull request** whose title follows
    Conventional Commits, so CI runs from here on. **[approval]**
 
 ### 4. Iteratively implement code until all unit tests pass.
