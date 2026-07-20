@@ -8,7 +8,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsup",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "docs": "typedoc --entryPointStrategy expand src/commands src/lib"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,10 @@
     "url": "https://github.com/worldware-studios/msg-cli/issues"
   },
   "homepage": "https://github.com/worldware-studios/msg-cli#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "bin": {
     "msg": "./bin/run.js"
   },
@@ -38,8 +43,10 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.0.18",
+    "semantic-release": "^25.0.8",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
+    "typedoc": "^0.28.20",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
