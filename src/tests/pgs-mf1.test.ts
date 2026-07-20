@@ -53,6 +53,18 @@ describe("pgs-mf1", () => {
     expect(mf1MessageToPgsExport("Hello {name}")).toBeNull();
   });
 
+  test("returns null for malformed MF1", () => {
+    expect(mf1MessageToPgsExport("{count, plural, one {")).toBeNull();
+  });
+
+  test("import returns null for empty segments or bad switch", () => {
+    expect(pgsImportToMf1Message("", [])).toBeNull();
+    expect(pgsImportToMf1Message("plural:n", [])).toBeNull();
+    expect(
+      pgsImportToMf1Message("plural:n", [{ caseAttr: "one two", body: "x" }])
+    ).toBeNull();
+  });
+
   test("round-trip plural via PGS import", () => {
     const src = "{count, plural, one {one file} other {# files}}";
     const exp = mf1MessageToPgsExport(src);

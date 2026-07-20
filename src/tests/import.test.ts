@@ -101,6 +101,39 @@ describe("Import command", () => {
       expect(content.messages[1].value).toBe("世界");
     });
 
+    test("imports NONE/MF1/MF2 formats and MF1 PGS plurals from XLIFF 2.2", async () => {
+      const { xliffDir, translationsDir, projectsDir } =
+        setupPackageWithI18nAndL10n(tmp);
+      copyFileSync(
+        join(FIXTURES_XLIFF, "formats.zh.xliff"),
+        join(xliffDir, "test.zh.xliff")
+      );
+      copyFileSync(
+        join(FIXTURES_PROJECTS, "test.ts"),
+        join(projectsDir, "test.ts")
+      );
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+
+      await ImportCmd.run([], CLI_ROOT);
+
+      const outputPath = join(translationsDir, "test", "zh", "Example.json");
+      expect(existsSync(outputPath)).toBe(true);
+      const content = JSON.parse(readFileSync(outputPath, "utf-8"));
+      const byKey = Object.fromEntries(
+        content.messages.map((m: { key: string }) => [m.key, m])
+      );
+      expect(byKey.raw.attributes.format).toBe("NONE");
+      expect(byKey.raw.value).toBe("字面 {x}");
+      expect(byKey.files.attributes.format).toBe("MF1");
+      expect(byKey.files.value).toMatch(/\{count,\s*plural,/);
+      expect(byKey.files.value).toContain("# 个文件");
+      expect(
+        byKey.hello.attributes?.format === "MF2" ||
+          byKey.hello.attributes?.format === undefined
+      ).toBe(true);
+      expect(byKey.hello.value).toBe("你好 {$name}");
+    });
+
     test("import filtered to single project", async () => {
       const { xliffDir, translationsDir, projectsDir } =
         setupPackageWithI18nAndL10n(tmp);
