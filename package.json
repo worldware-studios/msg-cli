@@ -8,7 +8,8 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsup",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "docs": "typedoc --entryPointStrategy expand src/commands src/lib"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
+    "typedoc": "^0.28.20",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },

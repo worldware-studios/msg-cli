@@ -69,8 +69,9 @@ traceability through the phases instead.
 - Use the body to explain the "why"; reference the issue (e.g. `Refs #42`).
 - Commit in small, coherent units — do not batch an entire phase into one
   opaque commit. A phase may produce several commits.
-- Never commit generated output (`dist/`, `coverage/`), secrets, or `.env`
-  files.
+- Never commit generated output (`dist/`, `coverage/`, `docs/`), secrets, or
+  `.env` files. Generated API docs are produced on demand via `npm run docs`
+  and are git-ignored like other build output.
 
 ## Pull requests
 

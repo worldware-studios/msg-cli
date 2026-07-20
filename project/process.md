@@ -94,8 +94,11 @@ keep momentum on the lightweight track.
 2. Update any documentation affected by the change, including `README.md` and
    the relevant command specification(s) under `src/specs/`. Create a new
    `*.spec.md` from the templates when adding a command.
-3. Review the documentation with the user and incorporate suggestions.
-4. Commit the changes prefixed with `document:` and push. **[approval]**
+3. Generate API documentation into the `docs/` folder via `npm run docs`
+   (TypeDoc over `src/commands` and `src/lib`). The generated `docs/` output is
+   git-ignored — regenerate it on demand rather than committing it.
+4. Review the documentation with the user and incorporate suggestions.
+5. Commit the changes prefixed with `document:` and push. **[approval]**
 
 ### 8. Perform final review and refactor.
 1. Perform a final review of the codebase for errors or areas for improvement.

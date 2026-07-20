@@ -51,11 +51,13 @@ process in `project/process.md`. Keep it accurate — the process depends on it.
 - **Coverage:** `npm run coverage` (`vitest run --coverage`).
 - **Build:** `npm run build` (`tsup` → `dist/`).
 - **Type-check:** `npx tsc --noEmit` (no dedicated npm script).
+- **API docs:** `npm run docs` (`typedoc --entryPointStrategy expand
+  src/commands src/lib` → git-ignored `docs/`).
 - **Run the CLI locally:** `./bin/dev.js <command>` (runs from `src/` without a
   build); the built binary is exposed as `msg` via `bin/run.js`.
 
-Note: there is currently no `lint` or `docs` npm script. User-facing docs live
-in `README.md` and `src/specs/`.
+Note: there is currently no `lint` npm script. User-facing docs also live in
+`README.md` and `src/specs/`.
 
 ## Continuous integration
 
@@ -67,7 +69,5 @@ in `README.md` and `src/specs/`.
   pushes to `main`. A `verify` job runs `npm test` (plus dependency signature
   audit); a `release` job runs `npx semantic-release` when verify succeeds.
 - **`.github/workflows/docs.yml` (Deploy static content to Pages):** runs on
-  pushes to `main` (and `workflow_dispatch`). Expects `npm run docs` and
-  deploys the `docs/` folder to GitHub Pages — the `docs` script is not yet
-  defined in `package.json`, so this workflow is ahead of the package until
-  that script is added.
+  pushes to `main` (and `workflow_dispatch`). Runs `npm run docs` and deploys
+  the generated `docs/` folder to GitHub Pages.
