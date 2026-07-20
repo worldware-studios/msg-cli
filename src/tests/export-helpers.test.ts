@@ -20,9 +20,12 @@ const FIXTURES_MSG = join(__dirname, "fixtures", "msg-files");
 const FIXTURES_MSG_INVALID = join(__dirname, "fixtures", "msg-files-invalid");
 
 /** Creates a minimal MsgProject for use in tests. */
-function createTestProject(name: string) {
+function createTestProject(
+  name: string,
+  opts?: { format?: "NONE" | "MF1" | "MF2" }
+) {
   return MsgProject.create({
-    project: { name },
+    project: { name, ...(opts?.format ? { format: opts.format } : {}) },
     locales: {
       sourceLocale: "en",
       pseudoLocale: "en-XA",
@@ -46,15 +49,23 @@ function createTestResource(
   messages: {
     key: string;
     value: string;
-    attributes?: { dnt?: boolean; dir?: string };
+    attributes?: { dnt?: boolean; dir?: string; format?: "NONE" | "MF1" | "MF2" };
     notes?: MsgNoteLike[];
   }[] = [],
   resourceOpts?: {
-    attributes?: { lang?: string; dir?: string; dnt?: boolean };
+    attributes?: {
+      lang?: string;
+      dir?: string;
+      dnt?: boolean;
+      format?: "NONE" | "MF1" | "MF2";
+    };
     notes?: MsgNoteLike[];
+    projectFormat?: "NONE" | "MF1" | "MF2";
   }
 ) {
-  const project = createTestProject(projectName);
+  const project = createTestProject(projectName, {
+    format: resourceOpts?.projectFormat,
+  });
   const data = {
     title,
     attributes: { lang: "en", dir: "ltr", dnt: false, ...resourceOpts?.attributes },
@@ -392,6 +403,51 @@ one {{One item}}
         { project: "P", resources: [res] },
       ]);
       expect(result[0].xliff).toContain('srcDir="rtl"');
+    });
+
+    test("sets unit type from resolved message format", () => {
+      const res = createTestResource(
+        "R",
+        "P",
+        [
+          { key: "raw", value: "literal {x}", attributes: { format: "NONE" } },
+          {
+            key: "icu",
+            value: "{count, plural, one {# file} other {# files}}",
+            attributes: { format: "MF1" },
+          },
+          { key: "plain", value: "Hello" },
+        ],
+        { projectFormat: "MF2" }
+      );
+      const xliff = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ])[0]!.xliff;
+      expect(xliff).toMatch(/name="raw"[^>]*type="msg:NONE"|type="msg:NONE"[^>]*name="raw"/);
+      expect(xliff).toMatch(/name="icu"[^>]*type="msg:MF1"|type="msg:MF1"[^>]*name="icu"/);
+      expect(xliff).toMatch(/name="plain"[^>]*type="msg:MF2"|type="msg:MF2"[^>]*name="plain"/);
+    });
+
+    test("emits PGS for MF1 plural messages", () => {
+      const res = createTestResource(
+        "R",
+        "P",
+        [
+          {
+            key: "files",
+            value: "{count, plural, one {# file} other {# files}}",
+            attributes: { format: "MF1" },
+          },
+        ],
+        { projectFormat: "MF1" }
+      );
+      const xliff = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ])[0]!.xliff;
+      expect(xliff).toContain('type="msg:MF1"');
+      expect(xliff).toContain('pgs:switch="plural:count"');
+      expect(xliff).toContain('pgs:case="one"');
+      expect(xliff).toContain('pgs:case="other"');
     });
   });
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.2" xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0" version="2.2" srcLang="en" trgLang="zh">
+  <file id="f1" original="Example.json" trgLang="zh">
+    <unit id="raw" name="raw" type="msg:NONE">
+      <segment>
+        <source>literal {x}</source>
+        <target>字面 {x}</target>
+      </segment>
+    </unit>
+    <unit id="files" name="files" type="msg:MF1" pgs:switch="plural:count">
+      <segment id="files_s1" pgs:case="one">
+        <source># file</source>
+        <target># 个文件</target>
+      </segment>
+      <segment id="files_s2" pgs:case="other">
+        <source># files</source>
+        <target># 个文件</target>
+      </segment>
+    </unit>
+    <unit id="hello" name="hello" type="msg:MF2">
+      <segment>
+        <source>Hello {$name}</source>
+        <target>你好 {$name}</target>
+      </segment>
+    </unit>
+  </file>
+</xliff>

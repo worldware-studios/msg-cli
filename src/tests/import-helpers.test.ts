@@ -361,6 +361,88 @@ one {{一}}
       );
     });
 
+    test("reads unit type into message format attribute", () => {
+      const fileEl = {
+        "@_original": "R.json",
+        "@_trgLang": "zh",
+        unit: [
+          {
+            "@_id": "u1",
+            "@_name": "raw",
+            "@_type": "msg:NONE",
+            segment: { source: "S", target: "T" },
+          },
+          {
+            "@_id": "u2",
+            "@_name": "icu",
+            "@_type": "msg:MF1",
+            segment: { source: "S", target: "{n, plural, other {#}}" },
+          },
+          {
+            "@_id": "u3",
+            "@_name": "mf2",
+            "@_type": "msg:MF2",
+            segment: { source: "S", target: "Hello {$name}" },
+          },
+        ],
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result).toBeInstanceOf(MsgResource);
+      const data = result!.getData(true);
+      expect(data.messages![0]!.attributes?.format).toBe("NONE");
+      expect(data.messages![1]!.attributes?.format).toBe("MF1");
+      // MF2 matches the project default, so getData may omit it when inherited.
+      expect(
+        data.messages![2]!.attributes?.format === "MF2" ||
+          data.messages![2]!.attributes?.format === undefined
+      ).toBe(true);
+    });
+
+    test("rebuilds MF1 plural from PGS when unit type is msg:MF1", () => {
+      const fileEl = {
+        "@_original": "P.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "files",
+          "@_type": "msg:MF1",
+          "@_pgs:switch": "plural:count",
+          segment: [
+            {
+              "@_id": "u1_s1",
+              "@_pgs:case": "one",
+              source: "one file",
+              target: "一个文件",
+            },
+            {
+              "@_id": "u1_s2",
+              "@_pgs:case": "other",
+              source: "# files",
+              target: "# 个文件",
+            },
+          ],
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result).toBeInstanceOf(MsgResource);
+      const data = result!.getData(true);
+      expect(data.messages).toHaveLength(1);
+      expect(data.messages![0]!.attributes?.format).toBe("MF1");
+      expect(data.messages![0]!.value).toMatch(/\{count,\s*plural,/);
+      expect(data.messages![0]!.value).toContain("一个文件");
+      expect(data.messages![0]!.value).toContain("# 个文件");
+    });
+
     test("extracts notes from units", () => {
       const fileEl = {
         "@_original": "R.json",

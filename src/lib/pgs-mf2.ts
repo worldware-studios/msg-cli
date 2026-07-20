@@ -50,7 +50,7 @@ export type VariantKey =
   | { type: "literal"; value: string };
 
 /** Parsed MF2 select (`.match`) message shape from `messageformat`. */
-type SelectMessage = {
+export type SelectMessage = {
   type: "select";
   declarations: unknown[];
   selectors: Array<{ type: string; name?: string }>;
@@ -79,12 +79,22 @@ function getFunctionName(expr: {
   return expr.functionRef?.name;
 }
 
+function getOption(
+  opts: Map<string, unknown> | Record<string, unknown> | undefined,
+  key: string
+): unknown {
+  if (!opts) return undefined;
+  if (opts instanceof Map) return opts.get(key);
+  return opts[key];
+}
+
 function getSelectOptionOrdinal(expr: {
-  functionRef?: { name?: string; options?: Map<string, unknown> };
+  functionRef?: {
+    name?: string;
+    options?: Map<string, unknown> | Record<string, unknown>;
+  };
 }): boolean {
-  const opts = expr.functionRef?.options;
-  if (!opts || !(opts instanceof Map)) return false;
-  const sel = opts.get("select");
+  const sel = getOption(expr.functionRef?.options, "select");
   if (!sel || typeof sel !== "object" || sel === null) return false;
   if ((sel as { type?: string }).type !== "literal") return false;
   return (sel as { value?: string }).value === "ordinal";
@@ -132,7 +142,10 @@ export function classifySelectMessageForPgs(
 
     const expr = decl.value as {
       type?: string;
-      functionRef?: { name?: string; options?: Map<string, unknown> };
+      functionRef?: {
+        name?: string;
+        options?: Map<string, unknown> | Record<string, unknown>;
+      };
     };
     if (expr.type !== "expression") return null;
 
@@ -207,18 +220,12 @@ export interface PgsSegmentExport {
 }
 
 /**
- * If `source` is a classifiable `.match` message, returns PGS attributes and
- * per-variant segments; otherwise null (caller falls back to plain XLIFF).
+ * If `msg` is a classifiable MF2 select (`.match`) data model, returns PGS
+ * attributes and per-variant segments; otherwise null.
  */
-export function selectMessageToPgsExport(
-  source: string
+export function selectMessageDataToPgsExport(
+  msg: unknown
 ): { switchAttr: string; segments: PgsSegmentExport[] } | null {
-  let msg: unknown;
-  try {
-    msg = parseMessage(source);
-  } catch {
-    return null;
-  }
   if (!isSelectMessage(msg as never)) return null;
 
   const classification = classifySelectMessageForPgs(
@@ -238,9 +245,7 @@ export function selectMessageToPgsExport(
     for (let ki = 0; ki < classification.length; ki++) {
       const key = variant.keys[ki];
       if (!key) return null;
-      caseParts.push(
-        mf2KeyToPgsToken(key, classification[ki]!.kind)
-      );
+      caseParts.push(mf2KeyToPgsToken(key, classification[ki]!.kind));
     }
     segments.push({
       caseAttr: caseParts.join(" "),
@@ -249,6 +254,22 @@ export function selectMessageToPgsExport(
   }
 
   return { switchAttr, segments };
+}
+
+/**
+ * If `source` is a classifiable `.match` message, returns PGS attributes and
+ * per-variant segments; otherwise null (caller falls back to plain XLIFF).
+ */
+export function selectMessageToPgsExport(
+  source: string
+): { switchAttr: string; segments: PgsSegmentExport[] } | null {
+  let msg: unknown;
+  try {
+    msg = parseMessage(source);
+  } catch {
+    return null;
+  }
+  return selectMessageDataToPgsExport(msg);
 }
 
 export interface PgsSegmentImport {
