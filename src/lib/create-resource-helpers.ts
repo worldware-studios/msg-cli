@@ -115,7 +115,21 @@ export async function importMsgProjectForResource(
 }
 
 /**
+ * Builds the async loader function name for a resource title (e.g. Messages → getMessages).
+ * @param title - Resource title
+ * @returns Valid JS identifier starting with `get`
+ */
+export function resourceLoaderName(title: string): string {
+  // Scaffold stub — implemented in phase 4 (Refs #24)
+  throw new Error("Not implemented");
+}
+
+/**
  * Generates the MsgResource file content as a string.
+ * Emits ESM or CJS boilerplate that creates a MsgResource, adds sample
+ * messages via chainable `.add()`, and exports `resource` plus an async
+ * loader (`get<Title>`) that calls `resource.getTranslation(getLang())`.
+ * Project import uses the `#i18n/projects/<name>` alias from `msg init`.
  * @param params - Title, projectName, sourceLocale, dir, and isEsm
  * @returns The generated file content
  */
@@ -126,6 +140,8 @@ export function generateMsgResourceContent(params: {
   dir: "ltr" | "rtl";
   isEsm: boolean;
 }): string {
+  // Scaffold: keep previous generator so unit tests for the new boilerplate fail (TDD).
+  // Replaced in phase 4 (Refs #24).
   const { title, projectName, sourceLocale, dir, isEsm } = params;
   const projectImport = isEsm
     ? `../projects/${projectName}.js`

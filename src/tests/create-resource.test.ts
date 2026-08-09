@@ -28,14 +28,26 @@ function setupValidProject(
   projectContent?: string,
   skipProjectFile?: boolean
 ) {
+  const directories = {
+    i18n: "i18n",
+    l10n: "l10n",
+    root: ".",
+    ...((pkgOverrides.directories as Record<string, string> | undefined) ?? {}),
+  };
   const pkg = {
     name: "test-app",
     version: "1.0.0",
-    directories: { i18n: "i18n", l10n: "l10n", root: "." },
+    directories,
+    imports: {
+      "#i18n/*": `./${directories.i18n}/*`,
+      "#l10n/*": `./${directories.l10n}/*`,
+      "#root/*": "./*",
+    },
     ...pkgOverrides,
+    directories,
   };
   writeFileSync(join(tmp, "package.json"), JSON.stringify(pkg, null, 2));
-  const i18nDir = join(tmp, (pkg.directories as { i18n: string }).i18n);
+  const i18nDir = join(tmp, directories.i18n);
   const projectsDir = join(i18nDir, "projects");
   const resourcesDir = join(i18nDir, "resources");
   for (const d of [projectsDir, resourcesDir]) {
@@ -90,11 +102,13 @@ describe("CreateResource command", () => {
       const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
-      expect(content).toContain("import { MsgResource } from '@worldware/msg'");
-      expect(content).toContain("import project from '../projects/myProject.js'");
+      expect(content).toContain("import { MsgResource, getLang } from '@worldware/msg'");
+      expect(content).toContain("import project from '#i18n/projects/myProject'");
       expect(content).toContain("title: 'messages'");
       expect(content).toContain("dir: 'ltr'");
-      expect(content).toContain("export default MsgResource.create");
+      expect(content).toContain("export const resource = MsgResource.create");
+      expect(content).toContain("export async function getMessages()");
+      expect(content).not.toContain("export default");
     });
 
     test("creates resource file in CommonJS project", async () => {
@@ -102,10 +116,12 @@ describe("CreateResource command", () => {
       await CreateResource.run(["myProject", "messages"], CLI_ROOT);
 
       const content = readFileSync(join(tmp, "i18n", "resources", "messages.msg.js"), "utf-8");
-      expect(content).toContain("require('@worldware/msg')");
-      expect(content).toContain("require('../projects/myProject')");
-      expect(content).toContain("module.exports = MsgResource.create");
+      expect(content).toContain("const { MsgResource, getLang } = require('@worldware/msg')");
+      expect(content).toContain("require('#i18n/projects/myProject')");
+      expect(content).toContain("async function getMessages()");
+      expect(content).toContain("module.exports = {\n  resource,\n  getMessages\n}");
       expect(content).toContain("dir: 'ltr'");
+      expect(content).not.toContain("export default");
     });
 
     test("produces JavaScript file with ESM when tsconfig present", async () => {
@@ -116,8 +132,9 @@ describe("CreateResource command", () => {
       expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.js"))).toBe(true);
       expect(existsSync(join(tmp, "i18n", "resources", "messages.msg.ts"))).toBe(false);
       const content = readFileSync(join(tmp, "i18n", "resources", "messages.msg.js"), "utf-8");
-      expect(content).toContain("import { MsgResource } from '@worldware/msg'");
-      expect(content).toContain("export default MsgResource.create");
+      expect(content).toContain("import { MsgResource, getLang } from '@worldware/msg'");
+      expect(content).toContain("export const resource = MsgResource.create");
+      expect(content).toContain("export async function getMessages()");
       expect(content).not.toContain("module.exports");
     });
 
@@ -176,6 +193,8 @@ describe("CreateResource command", () => {
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("MsgResource.create");
+      expect(content).toContain("getLang");
+      expect(content).toContain("getMessages");
       expect(content).toContain("title:");
       expect(content).toContain("messages");
     });
@@ -189,7 +208,7 @@ describe("CreateResource command", () => {
       const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
-      expect(content).toContain("import project from '../projects/myApp.js'");
+      expect(content).toContain("import project from '#i18n/projects/myApp'");
       expect(content).toMatch(/lang:\s*['\"]en['\"]/);
       expect(content).toMatch(/dir:\s*['\"]ltr['\"]/);
     });
@@ -203,6 +222,7 @@ describe("CreateResource command", () => {
       expect(existsSync(join(tmp, "i18n", "resources", "my-messages.msg.js"))).toBe(true);
       const content = readFileSync(join(tmp, "i18n", "resources", "my-messages.msg.js"), "utf-8");
       expect(content).toContain("title: 'my-messages'");
+      expect(content).toContain("getMyMessages");
     });
 
     test("short projectName and title", async () => {
@@ -218,7 +238,8 @@ describe("CreateResource command", () => {
       expect(existsSync(join(tmp, "i18n", "resources", "t.msg.js"))).toBe(true);
       const content = readFileSync(join(tmp, "i18n", "resources", "t.msg.js"), "utf-8");
       expect(content).toContain("title: 't'");
-      expect(content).toContain("../projects/p");
+      expect(content).toContain("#i18n/projects/p");
+      expect(content).toContain("getT");
     });
 
     test("custom i18n path", async () => {
@@ -236,6 +257,11 @@ describe("CreateResource command", () => {
       await CreateResource.run(["myProject", "messages"], CLI_ROOT);
 
       expect(existsSync(join(tmp, "lib", "i18n", "resources", "messages.msg.js"))).toBe(true);
+      const content = readFileSync(
+        join(tmp, "lib", "i18n", "resources", "messages.msg.js"),
+        "utf-8"
+      );
+      expect(content).toContain("#i18n/projects/myProject");
     });
   });
 
