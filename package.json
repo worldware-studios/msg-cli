@@ -46,7 +46,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^4.0.18",
-    "semantic-release": "^25.0.8",
+    "semantic-release": "^25.0.9",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "typedoc": "^0.28.20",
