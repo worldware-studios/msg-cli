@@ -36,6 +36,29 @@ function isMsgResourceLike(value: unknown): value is MsgResource {
   );
 }
 
+/**
+ * Picks a MsgResource from a dynamically imported module.
+ * Supports default export, named `resource` / `MsgResource`, and CJS
+ * `module.exports = { resource }` (where `default` is the exports object).
+ */
+function resolveMsgResourceExport(
+  mod: Record<string, unknown>
+): MsgResource | undefined {
+  const defaultExport = mod.default;
+  const defaultRecord =
+    defaultExport && typeof defaultExport === "object"
+      ? (defaultExport as Record<string, unknown>)
+      : undefined;
+  const candidates: unknown[] = [
+    defaultExport,
+    mod.resource,
+    mod.MsgResource,
+    defaultRecord?.resource,
+    defaultRecord?.MsgResource,
+  ];
+  return candidates.find(isMsgResourceLike);
+}
+
 const XLIFF22_NS = "urn:oasis:names:tc:xliff:document:2.2";
 const PGS_NS = "urn:oasis:names:tc:xliff:pgs:1.0";
 
@@ -78,14 +101,13 @@ export async function importMsgResourcesFromPaths(
     }
     const url = pathToFileURL(filePath).href;
     const mod = await dynamicImportFromUrl(url);
-    const resource: unknown =
-      mod.default ?? (mod as { resource?: unknown }).resource ?? (mod as { MsgResource?: unknown }).MsgResource;
-    if (!isMsgResourceLike(resource)) {
+    const resource = resolveMsgResourceExport(mod);
+    if (!resource) {
       throw new Error(
         `Failed to import MsgResource from ${filePath}: no valid export found`
       );
     }
-    result.push(resource as MsgResource);
+    result.push(resource);
   }
   return result;
 }

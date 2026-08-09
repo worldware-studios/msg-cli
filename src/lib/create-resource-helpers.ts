@@ -115,7 +115,18 @@ export async function importMsgProjectForResource(
 }
 
 /**
+ * Escapes a string for use inside a single-quoted JS literal.
+ */
+function escapeSingleQuoted(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+/**
  * Generates the MsgResource file content as a string.
+ * Emits ESM or CJS boilerplate that creates a MsgResource, adds sample
+ * messages via chainable `.add()`, and exports `resource` plus an async
+ * `getMessages` loader that calls `resource.getTranslation(getLang())`.
+ * Project import uses the `#i18n/projects/<name>` alias from `msg init`.
  * @param params - Title, projectName, sourceLocale, dir, and isEsm
  * @returns The generated file content
  */
@@ -127,55 +138,78 @@ export function generateMsgResourceContent(params: {
   isEsm: boolean;
 }): string {
   const { title, projectName, sourceLocale, dir, isEsm } = params;
-  const projectImport = isEsm
-    ? `../projects/${projectName}.js`
-    : `../projects/${projectName}`;
-  const messagesBlock = `  messages: [
-    {
-      key: 'example.message',
-      value: 'Example message.',
-      notes: [
-        { type: 'DESCRIPTION', content: 'This is an example message. You can delete it.' }
-      ]
-    }
-  ]`;
-
-  const titleStr = `'${title.replace(/'/g, "\\'")}'`;
-  const langStr = `'${sourceLocale.replace(/'/g, "\\'")}'`;
+  const titleStr = `'${escapeSingleQuoted(title)}'`;
+  const langStr = `'${escapeSingleQuoted(sourceLocale)}'`;
   const dirStr = `'${dir}'`;
+  const resourceNote = `This is the ${escapeSingleQuoted(title)} resource.`;
+  const projectImport = `#i18n/projects/${escapeSingleQuoted(projectName)}`;
+
+  const createAndAdd = `MsgResource.create({
+    title: ${titleStr},
+    attributes: {
+      lang: ${langStr},
+      dir: ${dirStr}
+    },
+    notes: [
+      {type: 'DESCRIPTION', content: '${resourceNote}'}
+    ]
+  }, project);
+
+/** 
+ * Add messages to the resource using add(key, value, attributes, notes)
+ * The add method is chainable.
+ */
+
+resource
+    .add('sampleKey', 'Sample value.', {}, [
+      { type: 'DESCRIPTION', content: 'This is first message.' }
+    ])
+    .add('sampleKey2', 'Hi, {name}', { dnt: true }, [
+      { type: 'DESCRIPTION', content: 'This is the second message.' },
+      { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
+    ]);`;
 
   if (isEsm) {
-    return `import { MsgResource } from '@worldware/msg';
+    return `/** ESM module **/
+
+import { MsgResource, getLang } from '@worldware/msg';
 import project from '${projectImport}';
 
-export default MsgResource.create({
-  title: ${titleStr},
-  attributes: {
-    lang: ${langStr},
-    dir: ${dirStr}
-  },
-  notes: [
-    { type: 'DESCRIPTION', content: 'This is a generated file. Replace this description with your own.' }
-  ],
-${messagesBlock}
-}, project);
+/** Create a MsgResource object */
+
+export const resource = ${createAndAdd}
+
+/** 
+ * An async function to get a translated version of the resource 
+ * If the runtime language has not been set using \`setLang()\`, 
+ * it will return the original resource
+ */
+export async function getMessages() {
+  return await resource.getTranslation(getLang());
+}
 `;
   }
 
-  return `const { MsgResource } = require('@worldware/msg');
+  return `/** CJS implementation **/
+
+const { MsgResource, getLang } = require('@worldware/msg');
 const project = require('${projectImport}');
 
-module.exports = MsgResource.create({
-  title: ${titleStr},
-  attributes: {
-    lang: ${langStr},
-    dir: ${dirStr}
-  },
-  notes: [
-    { type: 'DESCRIPTION', content: 'This is a generated file. Replace this description with your own.' }
-  ],
-${messagesBlock}
-}, project);
+const resource = ${createAndAdd}
+
+/** 
+ * An async function to get a translated version of the resource 
+ * If a runtime language has not been set using \`setLang()\`, 
+ * it will return the original resource
+ */
+async function getMessages() {
+  return await resource.getTranslation(getLang());
+}
+
+module.exports = {
+  resource,
+  getMessages
+}
 `;
 }
 

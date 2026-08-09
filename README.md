@@ -154,11 +154,38 @@ msg create resource myProject messages --edit
 
 **Behavior:**
 
-- Writes the file to `i18n/resources/<title>.msg.js` (always `.js`).
-- Uses ES module or CommonJS export syntax based on `package.json` `"type"` or presence of `tsconfig.json`.
+- Writes the file to `i18n/resources/<title>.msg.js` (always `.js`, including TypeScript projects).
+- Uses ES module or CommonJS syntax based on `package.json` `"type"` or presence of `tsconfig.json`.
+- Imports the project via the `#i18n/projects/<projectName>` alias (added by `msg init`).
 - Sets `lang` from the project's `sourceLocale` and `dir` to `rtl` for Arabic/Hebrew, `ltr` otherwise.
-- Includes a minimal example message. Validates that the generated file is importable.
+- Exports a named `resource` plus an async `getMessages()` helper that returns `resource.getTranslation(getLang())`, so the resource can be pre-translated for the runtime locale.
+- Includes sample messages added via chainable `.add()`. Validates that the generated file is importable.
 - Errors if i18n/projects or i18n/resources does not exist, the project is not found, or the resource file already exists (unless `--force`).
+
+**Generated file (ESM excerpt):**
+
+```javascript
+import { MsgResource, getLang } from '@worldware/msg';
+import project from '#i18n/projects/myProject';
+
+export const resource = MsgResource.create({ /* title, attributes, notes */ }, project);
+
+resource
+  .add('sampleKey', 'Sample value.', {}, [/* notes */])
+  .add('sampleKey2', 'Hi, {name}', { dnt: true }, [/* notes */]);
+
+export async function getMessages() {
+  return await resource.getTranslation(getLang());
+}
+```
+
+**Usage:**
+
+```javascript
+import { getMessages } from '#i18n/resources/messages.msg.js';
+
+const messages = await getMessages();
+```
 
 ### export
 
@@ -187,7 +214,7 @@ msg export -p myApp
 **Behavior:**
 
 - Recursively finds all `.msg.js` and `.msg.ts` files under `i18n/resources`.
-- Imports each file as a MsgResource; errors if any file is invalid.
+- Imports each file as a MsgResource (default export, or named `resource` / `MsgResource`, including CJS `module.exports = { resource }`); errors if any file is invalid.
 - Groups resources by project name and writes one XLIFF 2.2 file per project to `l10n/xliff` (e.g. `myApp.xliff`).
 - With `--project`, only that project is exported; existing other files in `l10n/xliff` are not removed.
 - If no MsgResource files are found, exits with an informational message (no error).

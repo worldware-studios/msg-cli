@@ -181,37 +181,44 @@ describe("create-resource-helpers", () => {
   });
 
   describe("generateMsgResourceContent", () => {
-    test("generates ESM content with correct structure", () => {
+    test("generates ESM content with getLang, named resource, and loader", () => {
       const content = generateMsgResourceContent({
-        title: "messages",
-        projectName: "myProject",
+        title: "Messages",
+        projectName: "Main",
         sourceLocale: "en",
         dir: "ltr",
         isEsm: true,
       });
-      expect(content).toContain("import { MsgResource } from '@worldware/msg'");
-      expect(content).toContain("import project from '../projects/myProject.js'");
-      expect(content).toContain("title: 'messages'");
+      expect(content).toContain("import { MsgResource, getLang } from '@worldware/msg'");
+      expect(content).toContain("import project from '#i18n/projects/Main'");
+      expect(content).toContain("title: 'Messages'");
       expect(content).toContain("lang: 'en'");
       expect(content).toContain("dir: 'ltr'");
-      expect(content).toContain("export default MsgResource.create");
+      expect(content).toContain("export const resource = MsgResource.create");
+      expect(content).toContain(".add('sampleKey'");
+      expect(content).toContain(".add('sampleKey2'");
+      expect(content).toContain("export async function getMessages()");
+      expect(content).toContain("resource.getTranslation(getLang())");
+      expect(content).not.toContain("export default");
       expect(content).not.toContain("module.exports");
-      expect(content).toContain("example.message");
-      expect(content).toContain("Example message.");
+      expect(content).not.toContain("../projects/");
     });
 
-    test("generates CJS content with module.exports", () => {
+    test("generates CJS content with named exports object", () => {
       const content = generateMsgResourceContent({
-        title: "messages",
-        projectName: "myProject",
+        title: "Messages",
+        projectName: "Main",
         sourceLocale: "en",
         dir: "ltr",
         isEsm: false,
       });
-      expect(content).toContain("require('@worldware/msg')");
-      expect(content).toContain("require('../projects/myProject')");
-      expect(content).toContain("module.exports = MsgResource.create");
+      expect(content).toContain("const { MsgResource, getLang } = require('@worldware/msg')");
+      expect(content).toContain("require('#i18n/projects/Main')");
+      expect(content).toContain("const resource = MsgResource.create");
+      expect(content).toContain("async function getMessages()");
+      expect(content).toContain("module.exports = {\n  resource,\n  getMessages\n}");
       expect(content).not.toContain("export default");
+      expect(content).not.toContain("export const resource");
       expect(content).toContain("dir: 'ltr'");
     });
 
@@ -226,7 +233,7 @@ describe("create-resource-helpers", () => {
       expect(content).toContain("dir: 'rtl'");
     });
 
-    test("handles title with hyphens", () => {
+    test("always names the loader getMessages regardless of title", () => {
       const content = generateMsgResourceContent({
         title: "my-messages",
         projectName: "app",
@@ -235,6 +242,7 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("title: 'my-messages'");
+      expect(content).toContain("export async function getMessages()");
     });
 
     test("handles short projectName and title", () => {
@@ -246,7 +254,8 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("title: 't'");
-      expect(content).toContain("../projects/p.js");
+      expect(content).toContain("import project from '#i18n/projects/p'");
+      expect(content).toContain("export async function getMessages()");
     });
 
     test("escapes single quotes in title", () => {
@@ -261,6 +270,17 @@ describe("create-resource-helpers", () => {
       expect(content).not.toMatch(/title: 'O'Brien'/);
     });
 
+    test("escapes single quotes in projectName", () => {
+      const content = generateMsgResourceContent({
+        title: "messages",
+        projectName: "O'Brien",
+        sourceLocale: "en",
+        dir: "ltr",
+        isEsm: true,
+      });
+      expect(content).toContain("import project from '#i18n/projects/O\\'Brien'");
+    });
+
     test("escapes single quotes in sourceLocale", () => {
       const content = generateMsgResourceContent({
         title: "messages",
@@ -270,6 +290,19 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toMatch(/lang:\s*'[^']*'/);
+    });
+
+    test("includes resource DESCRIPTION note derived from title", () => {
+      const content = generateMsgResourceContent({
+        title: "Messages",
+        projectName: "Main",
+        sourceLocale: "en",
+        dir: "ltr",
+        isEsm: true,
+      });
+      expect(content).toContain(
+        "{type: 'DESCRIPTION', content: 'This is the Messages resource.'}"
+      );
     });
   });
 
