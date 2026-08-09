@@ -110,10 +110,11 @@ export default class CreateProject extends Command {
     let baseProject: Awaited<ReturnType<typeof importMsgProjectFile>> | undefined;
     const hasUserSourceAndTargets = Boolean(resolvedSource && targets?.length && targets.some((t) => t?.trim()));
 
-    if (flags.extend) {
-      const base = await importMsgProjectFile(projectsDir, flags.extend);
+    if (useExtend) {
+      const extendName = flags.extend!.trim();
+      const base = await importMsgProjectFile(projectsDir, extendName);
       if (!base) {
-        this.error(`Project '${flags.extend}' could not be found to extend.`, { exit: 1 });
+        this.error(`Project '${extendName}' could not be found to extend.`, { exit: 1 });
       }
       baseProject = base;
       if (base.locales?.targetLocales && typeof base.locales.targetLocales === "object") {
