@@ -3,16 +3,67 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
+import { MSG_DEFAULT_FORMAT } from "@worldware/msg";
 import {
   calculateRelativePath,
   loadPackageJsonForCreateProject,
   writeMsgProjectFile,
   importMsgProjectFile,
+  resolveCreateProjectFormat,
 } from "../lib/create-project-helpers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("create-project-helpers", () => {
+  describe("resolveCreateProjectFormat", () => {
+    test("defaults to library default when flag and base are omitted", () => {
+      expect(resolveCreateProjectFormat(undefined)).toBe(MSG_DEFAULT_FORMAT);
+    });
+
+    test("uses explicit flag over base project format", () => {
+      expect(
+        resolveCreateProjectFormat("NONE", {
+          project: { name: "base", format: "MF1" },
+        })
+      ).toBe("NONE");
+      expect(
+        resolveCreateProjectFormat("MF1", {
+          project: { name: "base", format: "MF2" },
+        })
+      ).toBe("MF1");
+    });
+
+    test("inherits format from base.project.format when flag is omitted", () => {
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base", format: "MF1" },
+        })
+      ).toBe("MF1");
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base", format: "NONE" },
+        })
+      ).toBe("NONE");
+    });
+
+    test("inherits format from MsgProject-like format getter when project.format missing", () => {
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base" },
+          format: "MF1",
+        })
+      ).toBe("MF1");
+    });
+
+    test("falls back to library default when base has no format", () => {
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base" },
+        })
+      ).toBe(MSG_DEFAULT_FORMAT);
+    });
+  });
+
   describe("calculateRelativePath", () => {
     test("returns relative path from projects to translations (sibling dirs)", () => {
       const projects = "/root/i18n/projects";

@@ -2,9 +2,11 @@ import { Args, Command, Flags } from "@oclif/core";
 import { existsSync } from "fs";
 import { join } from "path";
 import {
+  CREATE_PROJECT_FORMATS,
   calculateRelativePath,
   importMsgProjectFile,
   loadPackageJsonForCreateProject,
+  resolveCreateProjectFormat,
   writeMsgProjectFile,
 } from "../../lib/create-project-helpers.js";
 import { findPackageJsonPath } from "../../lib/init-helpers.js";
@@ -17,6 +19,13 @@ export default class CreateProject extends Command {
     "Create a new MsgProject file in the projects directory (i18n/projects)";
 
   static override strict = false;
+
+  static override examples = [
+    "<%= config.bin %> <%= command.id %> myApp en fr de",
+    "<%= config.bin %> <%= command.id %> myApp en fr -f MF1",
+    "<%= config.bin %> <%= command.id %> extendedApp --extend base",
+    "<%= config.bin %> <%= command.id %> extendedApp --extend base --format NONE",
+  ];
 
   static override args = {
     projectName: Args.string({
@@ -39,6 +48,12 @@ export default class CreateProject extends Command {
       char: "e",
       description: "Extend an existing project",
     }),
+    format: Flags.option({
+      char: "f",
+      description: "Default message format for the project (MF1, MF2, or NONE)",
+      options: CREATE_PROJECT_FORMATS,
+      // No default: omission must be distinguishable from an explicit MF2 for --extend inheritance.
+    })(),
   };
 
   public async run(): Promise<void> {
@@ -92,13 +107,16 @@ export default class CreateProject extends Command {
     let targetLocales: Record<string, string[]> = {};
     let pseudoLocale = "en-XA";
     let resolvedSource = source?.trim();
+    let baseProject: Awaited<ReturnType<typeof importMsgProjectFile>> | undefined;
     const hasUserSourceAndTargets = Boolean(resolvedSource && targets?.length && targets.some((t) => t?.trim()));
 
-    if (flags.extend) {
-      const base = await importMsgProjectFile(projectsDir, flags.extend);
+    if (useExtend) {
+      const extendName = flags.extend!.trim();
+      const base = await importMsgProjectFile(projectsDir, extendName);
       if (!base) {
-        this.error(`Project '${flags.extend}' could not be found to extend.`, { exit: 1 });
+        this.error(`Project '${extendName}' could not be found to extend.`, { exit: 1 });
       }
+      baseProject = base;
       if (base.locales?.targetLocales && typeof base.locales.targetLocales === "object") {
         targetLocales = { ...base.locales.targetLocales };
       }
@@ -120,6 +138,8 @@ export default class CreateProject extends Command {
       }
     }
 
+    const format = resolveCreateProjectFormat(flags.format, baseProject);
+
     const loaderPathLine =
       "const path = `${TRANSLATION_IMPORT_PATH}/${project}/${language}/${title}.json`;";
     const loaderWarnLine =
@@ -139,6 +159,7 @@ export default class CreateProject extends Command {
   }`;
 
     const importPath = relPath.replace(/\\/g, "/");
+    const projectSettings = `project: { name: ${JSON.stringify(projectName)}, version: 1, format: ${JSON.stringify(format)} }`;
     const content = isEsm
       ? `import { MsgProject } from '@worldware/msg';
 
@@ -148,7 +169,7 @@ const loader = async (project, title, language) => {
 };
 
 export default MsgProject.create({
-  project: { name: ${JSON.stringify(projectName)}, version: 1 },
+  ${projectSettings},
   locales: {
     sourceLocale: ${JSON.stringify(resolvedSource)},
     pseudoLocale: ${JSON.stringify(pseudoLocale)},
@@ -165,7 +186,7 @@ const loader = async (project, title, language) => {
 };
 
 module.exports = MsgProject.create({
-  project: { name: ${JSON.stringify(projectName)}, version: 1 },
+  ${projectSettings},
   locales: {
     sourceLocale: ${JSON.stringify(resolvedSource)},
     pseudoLocale: ${JSON.stringify(pseudoLocale)},

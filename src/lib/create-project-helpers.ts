@@ -1,19 +1,41 @@
 import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { dirname, join, relative } from "path";
 import { pathToFileURL } from "url";
+import { MSG_DEFAULT_FORMAT } from "@worldware/msg";
 import { dynamicImportFromUrl } from "./create-resource-helpers.js";
 import type { PackageJson } from "./init-helpers.js";
 import { loadPackageJsonForMsg } from "./init-helpers.js";
+import type { MsgFormat } from "./msg-format.js";
 
 /** Minimal type for MsgProject-like data we read from an existing project file. */
 export interface MsgProjectFileData {
-  project?: { name?: string; version?: number };
+  project?: { name?: string; version?: number; format?: MsgFormat };
+  /** Resolved format getter on MsgProject instances. */
+  format?: MsgFormat;
   locales?: {
     sourceLocale?: string;
     pseudoLocale?: string;
     targetLocales?: Record<string, string[]>;
   };
   loader?: unknown;
+}
+
+/** Allowed `--format` / `-f` values for `create project`. */
+export const CREATE_PROJECT_FORMATS = ["MF1", "MF2", "NONE"] as const;
+
+/**
+ * Resolves the format to write into a new MsgProject file.
+ * Explicit flag wins; otherwise inherit from an extended project; else library default.
+ * @param flagFormat - Value from `--format` / `-f`, if provided
+ * @param base - Imported base project when `--extend` is used
+ */
+export function resolveCreateProjectFormat(
+  flagFormat: MsgFormat | undefined,
+  base?: MsgProjectFileData
+): MsgFormat {
+  if (flagFormat) return flagFormat;
+  const inherited = base?.project?.format ?? base?.format;
+  return inherited ?? MSG_DEFAULT_FORMAT;
 }
 
 /**
