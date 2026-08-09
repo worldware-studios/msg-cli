@@ -1,34 +1,57 @@
 ## 1. Summary
 
-The `create resource` command creates a `MsgResource` file in the `resources` subdirectory of the `i18n` created by the `init` command. Running the `init` command is a prerequisite to running the `create resource` command. An `MsgResource` file is a javascript or typescript file that exports a `MsgResource` instance. These files have `.msg.` right before the file extension, and are named after the resource `title`. For example, `messages.msg.js`. The `create resource` command should create a file that exports a minimal `MsgResource` instance, using the `projectName` and `title` arguments passed to the command. The `projectName` argument is used to reference the project file in the `i18n/projects` subdirectory. Project files use the project name as the file name, so the correct file to reference in the `MsgResource` import can be easily determined. The generated `MsgResource` file should look like approximately like this:
+The `create resource` command creates a `MsgResource` file in the `resources` subdirectory of the `i18n` created by the `init` command. Running the `init` command is a prerequisite to running the `create resource` command. An `MsgResource` file is a JavaScript file that exports a `MsgResource` instance (and a `getMessages` loader). These files have `.msg.` right before the `.js` extension, and are named after the resource `title`. For example, `messages.msg.js`. The command always writes a `.js` file, even when the surrounding project uses TypeScript.
+
+The generated file uses the `projectName` and `title` arguments, imports the project via the `#i18n/projects/<projectName>` alias (configured by `msg init`), and scaffolds sample messages plus an async `getMessages()` helper that calls `resource.getTranslation(getLang())` so callers can load a pre-translated resource for the runtime locale. An ESM example:
 
 ```javascript
-import { MsgResource } from '@worldware/msg';
-import project from '../projects/<projectName>';
+/** ESM module **/
 
-export default MsgResource.create({
-  title: <title>,
-  attributes: {
-    lang: <project.locales.sourceLocale>,
-    dir: <'rtl' or 'ltr'>
-  },
-  notes: [
-    { type: 'DESCRIPTION', content: 'This is a generated file. Replace this description with your own.'}
-  ],
-  messages: [
-    {
-      key: 'example.message',
-      value: 'Example message.'
-      notes: [
-        { type: 'DESCRIPTION', content 'This is an example message. You can delete it.' }
-      ]
-    }
-  ]
-}, project);
+import { MsgResource, getLang } from '@worldware/msg';
+import project from '#i18n/projects/<projectName>';
+
+/** Create a MsgResource object */
+
+export const resource = MsgResource.create({
+    title: '<title>',
+    attributes: {
+      lang: '<project.locales.sourceLocale>',
+      dir: "<'rtl' or 'ltr'>"
+    },
+    notes: [
+      {type: 'DESCRIPTION', content: 'This is the <title> resource.'}
+    ]
+  }, project);
+
+/** 
+ * Add messages to the resource using add(key, value, attributes, notes)
+ * The add method is chainable.
+ */
+
+resource
+    .add('sampleKey', 'Sample value.', {}, [
+      { type: 'DESCRIPTION', content: 'This is first message.' }
+    ])
+    .add('sampleKey2', 'Hi, {name}', { dnt: true }, [
+      { type: 'DESCRIPTION', content: 'This is the second message.' },
+      { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
+    ]);
+
+/** 
+ * An async function to get a translated version of the resource 
+ * If the runtime language has not been set using `setLang()`, 
+ * it will return the original resource
+ */
+export async function getMessages() {
+  return await resource.getTranslation(getLang());
+}
 ```
-The terms in angle brackets `<>` above are variables to be replaced with the actual values. If the sourceLocale uses `ar` or `he` as the language subtag, set `dir` to `'rtl'`. Otherwise, it should be set to `''ltr'` by default.
 
-The resulting file should be importable either as the default export of an ES module or as the main export of a CommonJS module. Which module format is used should depend on the module type being used in the surrounding project. If the project is using typescript, create a typescript file, but the content of that file would be no different from a javascript file.
+CommonJS projects get the same structure with `require` / `module.exports = { resource, getMessages }`.
+
+The terms in angle brackets `<>` above are variables to be replaced with the actual values. If the sourceLocale uses `ar` or `he` as the language subtag, set `dir` to `'rtl'`. Otherwise, it should be set to `'ltr'` by default.
+
+Which module format is used depends on the surrounding project (`package.json` `"type": "module"` or TypeScript → ESM; otherwise CJS).
 
 The general order of operations for the command happy path should be as follows:
 
@@ -37,7 +60,7 @@ The general order of operations for the command happy path should be as follows:
 3. Import the project file associated with the `projectName` argument from the `i18n/projects` directory. 
 4. Retrieve the sourceLocale from the project `locales` settings.
 5. Create a template string based on the code above that inserts the necessary variable values.
-6. Write the string to file in the `i18n/resources` directory, using the pattern: `<title>.msg.<ext>` 
+6. Write the string to file in the `i18n/resources` directory, using the pattern: `<title>.msg.js`
 
 ## 2. Context
 
@@ -49,6 +72,7 @@ The general order of operations for the command happy path should be as follows:
 
 - As a `Application Developer`, I want `to quickly scaffold a resource file`, so that `I do not have to do it myself`.
 - As a `Application Developer`, I want `the option to automatically open the file`, so that `I can quickly start editing it`.
+- As a `Application Developer`, I want `the scaffolded resource to expose getMessages()`, so that `I can load a pre-translated resource for the runtime locale`.
 
 ## 3. Functionality
 
@@ -56,6 +80,7 @@ The general order of operations for the command happy path should be as follows:
 
 - It `creates a MsgResource file in the i18n/resources directory` in order to `make it easy to start defining a MsgResource`.
 - It `associates every MsgResource with a MsgProject` in order to `pass on the project configuration to the resource and facilitate export to xliff`.
+- It `exports resource and getMessages` in order to `support pre-translated loading via getLang()/getTranslation()`.
 
 ### Secondary Functions
 
@@ -63,9 +88,9 @@ The general order of operations for the command happy path should be as follows:
 - It `imports the package.json file and gets the module type` in order to `determine what module type to use for the generated file`
 - It `retrieves the sourceLocale from the MsgProject instance` in order to `set the language on the MsgResource file`
 - It `tries to calculate the base direction (dir) based on the language subtag` in order to `set the direction on the MsgResource file`
-- It `creates a template string for a minimal MsgResource file` in order to `produce the content for the MsgResource file`
+- It `creates a template string for a MsgResource file with sample .add() messages and getMessages` in order to `produce the content for the MsgResource file`
 - It `determines the module type of the surrounding project` in order to `produce the correct export syntax for the generated content`
-- It `writes the generated content to a file named after the title followed .msg.` in order to `persist the MsgResource`
+- It `writes the generated content to a file named <title>.msg.js` in order to `persist the MsgResource`
 
 ## 4. Behavior
 
@@ -75,8 +100,10 @@ The general order of operations for the command happy path should be as follows:
 - It `must` throw an error if the file cannot be generated.
 - It `must` validate that the file is valid and importable, throwing an error if it is not.
 - It `must` be able to work on different platforms.
-- It `must` name the generated file using the `title` argument.
-- It `should` produce a typescript file if a `tsconfig.json` file is present.
+- It `must` name the generated file using the `title` argument with a `.msg.js` suffix.
+- It `must` always write a `.js` file (not `.ts`), even when `tsconfig.json` is present.
+- It `must` import the project via `#i18n/projects/<projectName>`.
+- It `must` export a named `resource` and an async `getMessages()` loader.
 - It `should` error if the `i18n/projects` or `i18n/resources` directories do not exist and prompt to run the `init` command.
 - It `should` error if the `projectName` or `title` arguments are not provided.
 - It `should` provide an option to open the MsgResource file after it is created.
@@ -212,18 +239,17 @@ The general order of operations for the command happy path should be as follows:
 - _[Create resource in ES module project]_
   - Given: A project with `init` run, `package.json` with `"type": "module"`, and a project file `i18n/projects/myProject.js`
   - When: User runs `create resource myProject messages`
-  - Then: A file `i18n/resources/messages.msg.js` is created with valid MsgResource content, correct `title`, import from `../projects/myProject`, and default `dir: 'ltr'` for non-RTL sourceLocale.
+  - Then: A file `i18n/resources/messages.msg.js` is created with valid MsgResource content, correct `title`, import from `#i18n/projects/myProject`, named `resource` export, `getMessages()`, and default `dir: 'ltr'` for non-RTL sourceLocale.
 
 - _[Create resource in CommonJS project]_
   - Given: A project with `init` run, `package.json` without `"type": "module"` (or `"type": "commonjs"`), and a project file in `i18n/projects`
   - When: User runs `create resource myProject messages`
-  - Then: A file `i18n/resources/messages.msg.cjs` (or appropriate CJS extension) is created with CommonJS-compatible export and valid MsgResource content.
+  - Then: A file `i18n/resources/messages.msg.js` is created with CommonJS `module.exports = { resource, getMessages }` and valid MsgResource content.
 
-- _[Create resource produces TypeScript when tsconfig present]_
+- _[Create resource always writes .js even when tsconfig present]_
   - Given: A project with `init` run, `tsconfig.json` at project root, and a project file in `i18n/projects`
   - When: User runs `create resource myProject messages`
-  - Then: A file `i18n/resources/messages.msg.ts` is created with valid MsgResource content and correct TypeScript syntax.
-
+  - Then: A file `i18n/resources/messages.msg.js` is created (not `.ts`) with ESM-style `resource` and `getMessages` exports.
 - _[Create resource sets dir to RTL for Arabic sourceLocale]_
   - Given: A project with `init` run and a project file whose `locales.sourceLocale` is `ar` or `ar-*`
   - When: User runs `create resource myProject messages`
@@ -252,19 +278,19 @@ The general order of operations for the command happy path should be as follows:
 - _[Generated file is valid and importable]_
   - Given: A project with `init` run and a project file in `i18n/projects`
   - When: User runs `create resource myProject messages`
-  - Then: The written file can be imported as default export (ES) or main export (CJS) and exports a valid MsgResource instance.
+  - Then: The written file exports a named `resource` (ESM `export const resource` or CJS `module.exports.resource`) plus `getMessages`, and `resource` is a valid MsgResource instance.
 
 #### Edge Cases
 
 - _[Title used as filename with safe naming]_
   - Given: A project with `init` run and a project file in `i18n/projects`
   - When: User runs `create resource myProject my-messages` or `create resource myProject my_messages`
-  - Then: The file is created as `i18n/resources/my-messages.msg.<ext>` (or `my_messages.msg.<ext>`) with content `title: 'my-messages'` (or matching title).
+  - Then: The file is created as `i18n/resources/my-messages.msg.js` (or `my_messages.msg.js`) with content `title: 'my-messages'` (or matching title) and loader still named `getMessages`.
 
 - _[Project name matches exactly one project file]_
   - Given: `i18n/projects/app.js` and `i18n/projects/other.js` exist
   - When: User runs `create resource app dashboard`
-  - Then: The generated file imports from `../projects/app` and no ambiguity error occurs.
+  - Then: The generated file imports from `#i18n/projects/app` and no ambiguity error occurs.
 
 - _[Source locale with compound tag still drives RTL]_
   - Given: A project file with `locales.sourceLocale` set to `ar-SA` or `he-IL`
@@ -279,7 +305,7 @@ The general order of operations for the command happy path should be as follows:
 - _[Short and minimal projectName and title]_
   - Given: A project with `init` run
   - When: User runs `create resource p t`
-  - Then: A file `i18n/resources/t.msg.<ext>` is created with `title: 't'` and project import from `../projects/p`, and the file is valid.
+  - Then: A file `i18n/resources/t.msg.js` is created with `title: 't'` and project import from `#i18n/projects/p`, and the file is valid.
 
 #### Errors
 
