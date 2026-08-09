@@ -190,7 +190,7 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("import { MsgResource, getLang } from '@worldware/msg'");
-      expect(content).toContain("import project from '#i18n/projects/Main'");
+      expect(content).toContain("import project from '#i18n/projects/Main.js'");
       expect(content).toContain("title: 'Messages'");
       expect(content).toContain("lang: 'en'");
       expect(content).toContain("dir: 'ltr'");
@@ -213,7 +213,7 @@ describe("create-resource-helpers", () => {
         isEsm: false,
       });
       expect(content).toContain("const { MsgResource, getLang } = require('@worldware/msg')");
-      expect(content).toContain("require('#i18n/projects/Main')");
+      expect(content).toContain("require('#i18n/projects/Main.js')");
       expect(content).toContain("const resource = MsgResource.create");
       expect(content).toContain("async function getMessages()");
       expect(content).toContain("module.exports = {\n  resource,\n  getMessages\n}");
@@ -254,7 +254,7 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("title: 't'");
-      expect(content).toContain("import project from '#i18n/projects/p'");
+      expect(content).toContain("import project from '#i18n/projects/p.js'");
       expect(content).toContain("export async function getMessages()");
     });
 
@@ -278,7 +278,7 @@ describe("create-resource-helpers", () => {
         dir: "ltr",
         isEsm: true,
       });
-      expect(content).toContain("import project from '#i18n/projects/O\\'Brien'");
+      expect(content).toContain("import project from '#i18n/projects/O\\'Brien.js'");
     });
 
     test("escapes single quotes in sourceLocale", () => {

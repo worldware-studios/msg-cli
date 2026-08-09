@@ -44,7 +44,6 @@ function setupValidProject(
       "#root/*": "./*",
     },
     ...pkgOverrides,
-    directories,
   };
   writeFileSync(join(tmp, "package.json"), JSON.stringify(pkg, null, 2));
   const i18nDir = join(tmp, directories.i18n);
@@ -103,7 +102,7 @@ describe("CreateResource command", () => {
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
       expect(content).toContain("import { MsgResource, getLang } from '@worldware/msg'");
-      expect(content).toContain("import project from '#i18n/projects/myProject'");
+      expect(content).toContain("import project from '#i18n/projects/myProject.js'");
       expect(content).toContain("title: 'messages'");
       expect(content).toContain("dir: 'ltr'");
       expect(content).toContain("export const resource = MsgResource.create");
@@ -117,7 +116,7 @@ describe("CreateResource command", () => {
 
       const content = readFileSync(join(tmp, "i18n", "resources", "messages.msg.js"), "utf-8");
       expect(content).toContain("const { MsgResource, getLang } = require('@worldware/msg')");
-      expect(content).toContain("require('#i18n/projects/myProject')");
+      expect(content).toContain("require('#i18n/projects/myProject.js')");
       expect(content).toContain("async function getMessages()");
       expect(content).toContain("module.exports = {\n  resource,\n  getMessages\n}");
       expect(content).toContain("dir: 'ltr'");
@@ -208,7 +207,7 @@ describe("CreateResource command", () => {
       const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
       expect(existsSync(outPath)).toBe(true);
       const content = readFileSync(outPath, "utf-8");
-      expect(content).toContain("import project from '#i18n/projects/myApp'");
+      expect(content).toContain("import project from '#i18n/projects/myApp.js'");
       expect(content).toMatch(/lang:\s*['\"]en['\"]/);
       expect(content).toMatch(/dir:\s*['\"]ltr['\"]/);
     });
@@ -238,7 +237,7 @@ describe("CreateResource command", () => {
       expect(existsSync(join(tmp, "i18n", "resources", "t.msg.js"))).toBe(true);
       const content = readFileSync(join(tmp, "i18n", "resources", "t.msg.js"), "utf-8");
       expect(content).toContain("title: 't'");
-      expect(content).toContain("#i18n/projects/p");
+      expect(content).toContain("#i18n/projects/p.js");
       expect(content).toContain("getMessages");
     });
 

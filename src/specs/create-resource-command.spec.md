@@ -2,13 +2,13 @@
 
 The `create resource` command creates a `MsgResource` file in the `resources` subdirectory of the `i18n` created by the `init` command. Running the `init` command is a prerequisite to running the `create resource` command. An `MsgResource` file is a JavaScript file that exports a `MsgResource` instance (and a `getMessages` loader). These files have `.msg.` right before the `.js` extension, and are named after the resource `title`. For example, `messages.msg.js`. The command always writes a `.js` file, even when the surrounding project uses TypeScript.
 
-The generated file uses the `projectName` and `title` arguments, imports the project via the `#i18n/projects/<projectName>` alias (configured by `msg init`), and scaffolds sample messages plus an async `getMessages()` helper that calls `resource.getTranslation(getLang())` so callers can load a pre-translated resource for the runtime locale. An ESM example:
+The generated file uses the `projectName` and `title` arguments, imports the project via the `#i18n/projects/<projectName>.js` alias (configured by `msg init`), and scaffolds sample messages plus an async `getMessages()` helper that calls `resource.getTranslation(getLang())` so callers can load a pre-translated resource for the runtime locale. An ESM example:
 
 ```javascript
 /** ESM module **/
 
 import { MsgResource, getLang } from '@worldware/msg';
-import project from '#i18n/projects/<projectName>';
+import project from '#i18n/projects/<projectName>.js';
 
 /** Create a MsgResource object */
 
@@ -102,7 +102,7 @@ The general order of operations for the command happy path should be as follows:
 - It `must` be able to work on different platforms.
 - It `must` name the generated file using the `title` argument with a `.msg.js` suffix.
 - It `must` always write a `.js` file (not `.ts`), even when `tsconfig.json` is present.
-- It `must` import the project via `#i18n/projects/<projectName>`.
+- It `must` import the project via `#i18n/projects/<projectName>.js`.
 - It `must` export a named `resource` and an async `getMessages()` loader.
 - It `should` error if the `i18n/projects` or `i18n/resources` directories do not exist and prompt to run the `init` command.
 - It `should` error if the `projectName` or `title` arguments are not provided.
@@ -239,7 +239,7 @@ The general order of operations for the command happy path should be as follows:
 - _[Create resource in ES module project]_
   - Given: A project with `init` run, `package.json` with `"type": "module"`, and a project file `i18n/projects/myProject.js`
   - When: User runs `create resource myProject messages`
-  - Then: A file `i18n/resources/messages.msg.js` is created with valid MsgResource content, correct `title`, import from `#i18n/projects/myProject`, named `resource` export, `getMessages()`, and default `dir: 'ltr'` for non-RTL sourceLocale.
+  - Then: A file `i18n/resources/messages.msg.js` is created with valid MsgResource content, correct `title`, import from `#i18n/projects/myProject.js`, named `resource` export, `getMessages()`, and default `dir: 'ltr'` for non-RTL sourceLocale.
 
 - _[Create resource in CommonJS project]_
   - Given: A project with `init` run, `package.json` without `"type": "module"` (or `"type": "commonjs"`), and a project file in `i18n/projects`
@@ -290,7 +290,7 @@ The general order of operations for the command happy path should be as follows:
 - _[Project name matches exactly one project file]_
   - Given: `i18n/projects/app.js` and `i18n/projects/other.js` exist
   - When: User runs `create resource app dashboard`
-  - Then: The generated file imports from `#i18n/projects/app` and no ambiguity error occurs.
+  - Then: The generated file imports from `#i18n/projects/app.js` and no ambiguity error occurs.
 
 - _[Source locale with compound tag still drives RTL]_
   - Given: A project file with `locales.sourceLocale` set to `ar-SA` or `he-IL`
@@ -305,7 +305,7 @@ The general order of operations for the command happy path should be as follows:
 - _[Short and minimal projectName and title]_
   - Given: A project with `init` run
   - When: User runs `create resource p t`
-  - Then: A file `i18n/resources/t.msg.js` is created with `title: 't'` and project import from `#i18n/projects/p`, and the file is valid.
+  - Then: A file `i18n/resources/t.msg.js` is created with `title: 't'` and project import from `#i18n/projects/p.js`, and the file is valid.
 
 #### Errors
 
