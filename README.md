@@ -156,7 +156,7 @@ msg create resource myProject messages --edit
 
 - Writes the file to `i18n/resources/<title>.msg.js` (always `.js`, including TypeScript projects).
 - Uses ES module or CommonJS syntax based on `package.json` `"type"` or presence of `tsconfig.json`.
-- Imports the project via the `#i18n/projects/<projectName>` alias (added by `msg init`).
+- Imports the project via the `#i18n/projects/<projectName>.js` alias (added by `msg init`).
 - Sets `lang` from the project's `sourceLocale` and `dir` to `rtl` for Arabic/Hebrew, `ltr` otherwise.
 - Exports a named `resource` plus an async `getMessages()` helper that returns `resource.getTranslation(getLang())`, so the resource can be pre-translated for the runtime locale.
 - Includes sample messages added via chainable `.add()`. Validates that the generated file is importable.
@@ -166,7 +166,7 @@ msg create resource myProject messages --edit
 
 ```javascript
 import { MsgResource, getLang } from '@worldware/msg';
-import project from '#i18n/projects/myProject';
+import project from '#i18n/projects/myProject.js';
 
 export const resource = MsgResource.create({ /* title, attributes, notes */ }, project);
 

@@ -126,7 +126,7 @@ function escapeSingleQuoted(value: string): string {
  * Emits ESM or CJS boilerplate that creates a MsgResource, adds sample
  * messages via chainable `.add()`, and exports `resource` plus an async
  * `getMessages` loader that calls `resource.getTranslation(getLang())`.
- * Project import uses the `#i18n/projects/<name>` alias from `msg init`.
+ * Project import uses the `#i18n/projects/<name>.js` alias from `msg init`.
  * @param params - Title, projectName, sourceLocale, dir, and isEsm
  * @returns The generated file content
  */
@@ -142,7 +142,7 @@ export function generateMsgResourceContent(params: {
   const langStr = `'${escapeSingleQuoted(sourceLocale)}'`;
   const dirStr = `'${dir}'`;
   const resourceNote = `This is the ${escapeSingleQuoted(title)} resource.`;
-  const projectImport = `#i18n/projects/${escapeSingleQuoted(projectName)}`;
+  const projectImport = `#i18n/projects/${escapeSingleQuoted(projectName)}.js`;
 
   const createAndAdd = `MsgResource.create({
     title: ${titleStr},
