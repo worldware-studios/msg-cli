@@ -79,7 +79,7 @@ msg init -i
 Create a new MsgProject file in the i18n projects directory. Requires `package.json` with `directories.i18n` and `directories.l10n` (run `msg init` first).
 
 ```bash
-msg create project <projectName> [source] [targets...] [--extend <name>]
+msg create project <projectName> [source] [targets...] [--extend <name>] [--format <MF1|MF2|NONE>]
 ```
 
 | Argument     | Required | Description                              |
@@ -93,16 +93,23 @@ msg create project <projectName> [source] [targets...] [--extend <name>]
 | Flag        | Short | Description                    |
 |------------|-------|--------------------------------|
 | `--extend` | `-e`  | Extend an existing project.   |
+| `--format` | `-f`  | Default message format: `MF1`, `MF2`, or `NONE` (default `MF2`). When omitted with `--extend`, inherits the base project's format. |
 | `--help`   | `-h`  | Show help for create project.  |
 
 **Examples:**
 
 ```bash
-# Create project myApp with source en and targets fr, de
+# Create project myApp with source en and targets fr, de (format defaults to MF2)
 msg create project myApp en fr de
 
-# Extend an existing project (inherits source and targets from base)
+# Create with MessageFormat 1 as the project default
+msg create project myApp en fr -f MF1
+
+# Extend an existing project (inherits source, targets, and format from base)
 msg create project extendedApp --extend base
+
+# Extend and override format
+msg create project extendedApp --extend base --format NONE
 
 # Extend and add/override locales
 msg create project extendedApp en de --extend base
@@ -115,10 +122,11 @@ msg create project -h
 
 - Writes the file to `i18n/projects/<projectName>.js` (always `.js`).
 - Uses ES module or CommonJS export syntax based on `package.json` `"type"` or presence of `tsconfig.json`.
+- Always includes `format` on `project` settings in the generated file (`MF2` by default).
 - Generates a translation loader that imports from `l10n/translations` using the relative path from `i18n/projects` (from `directories` in package.json).
 - Includes `pseudoLocale: 'en-XA'` by default (or inherits from the base project when extending), for use with msg's `getTranslation(pseudoLocale)` pseudolocalization support.
-- With `--extend <name>`, merges target locales and pseudoLocale from the existing project. If `source` and `targets` are omitted, they are inherited from the base project.
-- Errors if the project name already exists, package.json is missing or invalid, or required directories are not configured.
+- With `--extend <name>`, merges target locales and pseudoLocale from the existing project. If `source` and `targets` are omitted, they are inherited from the base project. If `--format` is omitted, format is inherited from the base project when set.
+- Errors if the project name already exists, package.json is missing or invalid, required directories are not configured, or `--format` is not one of `MF1` / `MF2` / `NONE`.
 
 ### create resource
 

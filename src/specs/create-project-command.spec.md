@@ -8,7 +8,8 @@ import { MsgProject } from `@worldware/msg`;
 export default = MsgProject.create({
   project: {
     name: <projectName>,
-    version: 1
+    version: 1,
+    format: <format> // MF1 | MF2 | NONE; defaults to MF2
   },
   locales: {
     sourceLocale: <source>,
@@ -60,6 +61,7 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 - As a `software developer`, I want to `be able to template a MsgProject file`, so that `I don't have to do it myself`.
 - As a `software developer`, I want `the loader function to be automatically configured based on the relative path`, so that `I don't have to do it myself`.
 - As a `software developer`, I want `the MsgProject file to use CommonJS or ES modules based on what is set in package.json`, so that `it fits into my project`.
+- As a `software developer`, I want `to specify the project message format with --format / -f`, so that `resources inherit MF1, MF2, or NONE by default`.
 
 ## 3. Functionality
 
@@ -88,6 +90,10 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 - It should require all arguments be passed and error with a message if any are missing
 - It should accecpt a flag `--extend` which takes the name of an existing project to extend
 - It should merge the new data with the information from the existing project if `--extend` is used
+- It should accept a flag `--format` / `-f` with values `MF1`, `MF2`, or `NONE`
+- It should default `format` to `MF2` when `--format` is omitted and not inherited
+- It should inherit `format` from the base project when `--extend` is used and `--format` is omitted
+- It should always write `format` on the generated `project` settings object
 - It should write an importable file.
 
 ### Constraints
@@ -102,9 +108,9 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 
 | Command   | Arguments     | Flags           | Notes   |
 | --------- | ------------- | --------------- | ------- |
-| `create project` | `<projectName>` `[source]` `[targets]` | `--extend=<existing project name>` | `creates a new MsgProject file in the projects dir` |
+| `create project` | `<projectName>` `[source]` `[targets]` | `--extend=<existing project name>`, `--format=<MF1\|MF2\|NONE>` (`-f`) | `creates a new MsgProject file in the projects dir` |
 
-* Note: Do not include the angle brackets above in the argument names. `source` and `targets` are optional when `--extend` is used; they are inherited from the base project.
+* Note: Do not include the angle brackets above in the argument names. `source` and `targets` are optional when `--extend` is used; they are inherited from the base project. When `--extend` is used without `--format`, format is inherited from the base project when set; otherwise it defaults to `MF2`.
 
 ### Inputs
 
@@ -124,6 +130,7 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 | Option   | Type   | Short   | Long   | Notes   |
 | -------- | ------ | ------- | ------ | ------- |
 | `extend` | `string` | `-e` | `--extend` | `Used to extend an existing project` |
+| `format` | `MF1` \| `MF2` \| `NONE` | `-f` | `--format` | `Project default message format; defaults to MF2; inherited from base when using --extend without --format` |
 
 
 ### Outputs
