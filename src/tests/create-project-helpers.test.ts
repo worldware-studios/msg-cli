@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
+import { MSG_DEFAULT_FORMAT } from "@worldware/msg";
 import {
   calculateRelativePath,
   loadPackageJsonForCreateProject,
@@ -15,8 +16,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("create-project-helpers", () => {
   describe("resolveCreateProjectFormat", () => {
-    test("defaults to MF2 when flag and base are omitted", () => {
-      expect(resolveCreateProjectFormat(undefined)).toBe("MF2");
+    test("defaults to library default when flag and base are omitted", () => {
+      expect(resolveCreateProjectFormat(undefined)).toBe(MSG_DEFAULT_FORMAT);
     });
 
     test("uses explicit flag over base project format", () => {
@@ -54,12 +55,12 @@ describe("create-project-helpers", () => {
       ).toBe("MF1");
     });
 
-    test("falls back to MF2 when base has no format", () => {
+    test("falls back to library default when base has no format", () => {
       expect(
         resolveCreateProjectFormat(undefined, {
           project: { name: "base" },
         })
-      ).toBe("MF2");
+      ).toBe(MSG_DEFAULT_FORMAT);
     });
   });
 

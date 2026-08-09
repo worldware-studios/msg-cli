@@ -10,7 +10,6 @@ import {
   writeMsgProjectFile,
 } from "../../lib/create-project-helpers.js";
 import { findPackageJsonPath } from "../../lib/init-helpers.js";
-import type { MsgFormat } from "../../lib/msg-format.js";
 
 /**
  * Creates a new MsgProject file in the i18n projects directory.
@@ -20,6 +19,13 @@ export default class CreateProject extends Command {
     "Create a new MsgProject file in the projects directory (i18n/projects)";
 
   static override strict = false;
+
+  static override examples = [
+    "<%= config.bin %> <%= command.id %> myApp en fr de",
+    "<%= config.bin %> <%= command.id %> myApp en fr -f MF1",
+    "<%= config.bin %> <%= command.id %> extendedApp --extend base",
+    "<%= config.bin %> <%= command.id %> extendedApp --extend base --format NONE",
+  ];
 
   static override args = {
     projectName: Args.string({
@@ -131,10 +137,7 @@ export default class CreateProject extends Command {
       }
     }
 
-    const format: MsgFormat = resolveCreateProjectFormat(
-      flags.format as MsgFormat | undefined,
-      baseProject
-    );
+    const format = resolveCreateProjectFormat(flags.format, baseProject);
 
     const loaderPathLine =
       "const path = `${TRANSLATION_IMPORT_PATH}/${project}/${language}/${title}.json`;";
