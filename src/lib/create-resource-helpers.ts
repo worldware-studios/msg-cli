@@ -115,13 +115,26 @@ export async function importMsgProjectForResource(
 }
 
 /**
+ * Escapes a string for use inside a single-quoted JS literal.
+ */
+function escapeSingleQuoted(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+/**
  * Builds the async loader function name for a resource title (e.g. Messages → getMessages).
  * @param title - Resource title
  * @returns Valid JS identifier starting with `get`
  */
 export function resourceLoaderName(title: string): string {
-  // Scaffold stub — implemented in phase 4 (Refs #24)
-  throw new Error("Not implemented");
+  const parts = title.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+  if (parts.length === 0) {
+    return "getResource";
+  }
+  const pascal = parts
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+  return `get${pascal}`;
 }
 
 /**
@@ -140,58 +153,80 @@ export function generateMsgResourceContent(params: {
   dir: "ltr" | "rtl";
   isEsm: boolean;
 }): string {
-  // Scaffold: keep previous generator so unit tests for the new boilerplate fail (TDD).
-  // Replaced in phase 4 (Refs #24).
   const { title, projectName, sourceLocale, dir, isEsm } = params;
-  const projectImport = isEsm
-    ? `../projects/${projectName}.js`
-    : `../projects/${projectName}`;
-  const messagesBlock = `  messages: [
-    {
-      key: 'example.message',
-      value: 'Example message.',
-      notes: [
-        { type: 'DESCRIPTION', content: 'This is an example message. You can delete it.' }
-      ]
-    }
-  ]`;
-
-  const titleStr = `'${title.replace(/'/g, "\\'")}'`;
-  const langStr = `'${sourceLocale.replace(/'/g, "\\'")}'`;
+  const loaderName = resourceLoaderName(title);
+  const titleStr = `'${escapeSingleQuoted(title)}'`;
+  const langStr = `'${escapeSingleQuoted(sourceLocale)}'`;
   const dirStr = `'${dir}'`;
+  const resourceNote = `This is the ${escapeSingleQuoted(title)} resource.`;
+  const projectImport = `#i18n/projects/${projectName}`;
+
+  const createAndAdd = `MsgResource.create({
+    title: ${titleStr},
+    attributes: {
+      lang: ${langStr},
+      dir: ${dirStr}
+    },
+    notes: [
+      {type: 'DESCRIPTION', content: '${resourceNote}'}
+    ]
+  }, project);
+
+/** 
+ * Add messages to the resource using add(key, value, attributes, notes)
+ * The add method is chainable.
+ */
+
+resource
+    .add('sampleKey', 'Sample value.', {}, [
+      { type: 'DESCRIPTION', content: 'This is first message.' }
+    ])
+    .add('sampleKey2', 'Hi, {name}', { dnt: true }, [
+      { type: 'DESCRIPTION', content: 'This is the second message.' },
+      { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
+    ]);`;
 
   if (isEsm) {
-    return `import { MsgResource } from '@worldware/msg';
+    return `/** ESM module **/
+
+import { MsgResource, getLang } from '@worldware/msg';
 import project from '${projectImport}';
 
-export default MsgResource.create({
-  title: ${titleStr},
-  attributes: {
-    lang: ${langStr},
-    dir: ${dirStr}
-  },
-  notes: [
-    { type: 'DESCRIPTION', content: 'This is a generated file. Replace this description with your own.' }
-  ],
-${messagesBlock}
-}, project);
+/** Create a MsgResource object */
+
+export const resource = ${createAndAdd}
+
+/** 
+ * An async function to get a translated version of the resource 
+ * If the runtime language has not been set using \`setLang()\`, 
+ * it will return the original resource
+ */
+export async function ${loaderName}() {
+  return await resource.getTranslation(getLang());
+}
 `;
   }
 
-  return `const { MsgResource } = require('@worldware/msg');
+  return `/** CJS implementation **/
+
+const { MsgResource, getLang } = require('@worldware/msg');
 const project = require('${projectImport}');
 
-module.exports = MsgResource.create({
-  title: ${titleStr},
-  attributes: {
-    lang: ${langStr},
-    dir: ${dirStr}
-  },
-  notes: [
-    { type: 'DESCRIPTION', content: 'This is a generated file. Replace this description with your own.' }
-  ],
-${messagesBlock}
-}, project);
+const resource = ${createAndAdd}
+
+/** 
+ * An async function to get a translated version of the resource 
+ * If a runtime language has not been set using \`setLang()\`, 
+ * it will return the original resource
+ */
+async function ${loaderName}() {
+  return await resource.getTranslation(getLang());
+}
+
+module.exports = {
+  resource,
+  ${loaderName}
+}
 `;
 }
 
