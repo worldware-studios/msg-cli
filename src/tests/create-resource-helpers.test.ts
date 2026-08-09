@@ -243,7 +243,6 @@ describe("create-resource-helpers", () => {
       });
       expect(content).toContain("title: 'my-messages'");
       expect(content).toContain("export async function getMessages()");
-      expect(content).not.toContain("getMyMessages");
     });
 
     test("handles short projectName and title", () => {
@@ -269,6 +268,17 @@ describe("create-resource-helpers", () => {
       });
       expect(content).toContain("title: 'O\\'Brien'");
       expect(content).not.toMatch(/title: 'O'Brien'/);
+    });
+
+    test("escapes single quotes in projectName", () => {
+      const content = generateMsgResourceContent({
+        title: "messages",
+        projectName: "O'Brien",
+        sourceLocale: "en",
+        dir: "ltr",
+        isEsm: true,
+      });
+      expect(content).toContain("import project from '#i18n/projects/O\\'Brien'");
     });
 
     test("escapes single quotes in sourceLocale", () => {

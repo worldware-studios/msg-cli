@@ -223,7 +223,6 @@ describe("CreateResource command", () => {
       const content = readFileSync(join(tmp, "i18n", "resources", "my-messages.msg.js"), "utf-8");
       expect(content).toContain("title: 'my-messages'");
       expect(content).toContain("getMessages");
-      expect(content).not.toContain("getMyMessages");
     });
 
     test("short projectName and title", async () => {

@@ -142,7 +142,7 @@ export function generateMsgResourceContent(params: {
   const langStr = `'${escapeSingleQuoted(sourceLocale)}'`;
   const dirStr = `'${dir}'`;
   const resourceNote = `This is the ${escapeSingleQuoted(title)} resource.`;
-  const projectImport = `#i18n/projects/${projectName}`;
+  const projectImport = `#i18n/projects/${escapeSingleQuoted(projectName)}`;
 
   const createAndAdd = `MsgResource.create({
     title: ${titleStr},
