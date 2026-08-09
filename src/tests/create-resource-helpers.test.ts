@@ -9,7 +9,6 @@ import {
   readPackageJsonForCreateResource,
   importMsgProjectForResource,
   generateMsgResourceContent,
-  resourceLoaderName,
   writeMsgResourceFile,
 } from "../lib/create-resource-helpers.js";
 
@@ -181,28 +180,6 @@ describe("create-resource-helpers", () => {
     });
   });
 
-  describe("resourceLoaderName", () => {
-    test("derives getMessages from Messages", () => {
-      expect(resourceLoaderName("Messages")).toBe("getMessages");
-    });
-
-    test("capitalizes first letter for lowercase titles", () => {
-      expect(resourceLoaderName("messages")).toBe("getMessages");
-    });
-
-    test("camelCases hyphenated titles", () => {
-      expect(resourceLoaderName("my-messages")).toBe("getMyMessages");
-    });
-
-    test("handles short titles", () => {
-      expect(resourceLoaderName("t")).toBe("getT");
-    });
-
-    test("falls back when title has no identifier characters", () => {
-      expect(resourceLoaderName("---")).toBe("getResource");
-    });
-  });
-
   describe("generateMsgResourceContent", () => {
     test("generates ESM content with getLang, named resource, and loader", () => {
       const content = generateMsgResourceContent({
@@ -256,7 +233,7 @@ describe("create-resource-helpers", () => {
       expect(content).toContain("dir: 'rtl'");
     });
 
-    test("handles title with hyphens and matching loader name", () => {
+    test("always names the loader getMessages regardless of title", () => {
       const content = generateMsgResourceContent({
         title: "my-messages",
         projectName: "app",
@@ -265,7 +242,8 @@ describe("create-resource-helpers", () => {
         isEsm: true,
       });
       expect(content).toContain("title: 'my-messages'");
-      expect(content).toContain("export async function getMyMessages()");
+      expect(content).toContain("export async function getMessages()");
+      expect(content).not.toContain("getMyMessages");
     });
 
     test("handles short projectName and title", () => {
@@ -278,7 +256,7 @@ describe("create-resource-helpers", () => {
       });
       expect(content).toContain("title: 't'");
       expect(content).toContain("import project from '#i18n/projects/p'");
-      expect(content).toContain("export async function getT()");
+      expect(content).toContain("export async function getMessages()");
     });
 
     test("escapes single quotes in title", () => {

@@ -222,7 +222,8 @@ describe("CreateResource command", () => {
       expect(existsSync(join(tmp, "i18n", "resources", "my-messages.msg.js"))).toBe(true);
       const content = readFileSync(join(tmp, "i18n", "resources", "my-messages.msg.js"), "utf-8");
       expect(content).toContain("title: 'my-messages'");
-      expect(content).toContain("getMyMessages");
+      expect(content).toContain("getMessages");
+      expect(content).not.toContain("getMyMessages");
     });
 
     test("short projectName and title", async () => {
@@ -239,7 +240,7 @@ describe("CreateResource command", () => {
       const content = readFileSync(join(tmp, "i18n", "resources", "t.msg.js"), "utf-8");
       expect(content).toContain("title: 't'");
       expect(content).toContain("#i18n/projects/p");
-      expect(content).toContain("getT");
+      expect(content).toContain("getMessages");
     });
 
     test("custom i18n path", async () => {

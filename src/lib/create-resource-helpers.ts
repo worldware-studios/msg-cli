@@ -122,26 +122,10 @@ function escapeSingleQuoted(value: string): string {
 }
 
 /**
- * Builds the async loader function name for a resource title (e.g. Messages → getMessages).
- * @param title - Resource title
- * @returns Valid JS identifier starting with `get`
- */
-export function resourceLoaderName(title: string): string {
-  const parts = title.split(/[^a-zA-Z0-9]+/).filter(Boolean);
-  if (parts.length === 0) {
-    return "getResource";
-  }
-  const pascal = parts
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join("");
-  return `get${pascal}`;
-}
-
-/**
  * Generates the MsgResource file content as a string.
  * Emits ESM or CJS boilerplate that creates a MsgResource, adds sample
  * messages via chainable `.add()`, and exports `resource` plus an async
- * loader (`get<Title>`) that calls `resource.getTranslation(getLang())`.
+ * `getMessages` loader that calls `resource.getTranslation(getLang())`.
  * Project import uses the `#i18n/projects/<name>` alias from `msg init`.
  * @param params - Title, projectName, sourceLocale, dir, and isEsm
  * @returns The generated file content
@@ -154,7 +138,6 @@ export function generateMsgResourceContent(params: {
   isEsm: boolean;
 }): string {
   const { title, projectName, sourceLocale, dir, isEsm } = params;
-  const loaderName = resourceLoaderName(title);
   const titleStr = `'${escapeSingleQuoted(title)}'`;
   const langStr = `'${escapeSingleQuoted(sourceLocale)}'`;
   const dirStr = `'${dir}'`;
@@ -201,7 +184,7 @@ export const resource = ${createAndAdd}
  * If the runtime language has not been set using \`setLang()\`, 
  * it will return the original resource
  */
-export async function ${loaderName}() {
+export async function getMessages() {
   return await resource.getTranslation(getLang());
 }
 `;
@@ -219,13 +202,13 @@ const resource = ${createAndAdd}
  * If a runtime language has not been set using \`setLang()\`, 
  * it will return the original resource
  */
-async function ${loaderName}() {
+async function getMessages() {
   return await resource.getTranslation(getLang());
 }
 
 module.exports = {
   resource,
-  ${loaderName}
+  getMessages
 }
 `;
 }
