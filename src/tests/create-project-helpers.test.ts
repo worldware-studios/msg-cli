@@ -8,11 +8,61 @@ import {
   loadPackageJsonForCreateProject,
   writeMsgProjectFile,
   importMsgProjectFile,
+  resolveCreateProjectFormat,
 } from "../lib/create-project-helpers.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 describe("create-project-helpers", () => {
+  describe("resolveCreateProjectFormat", () => {
+    test("defaults to MF2 when flag and base are omitted", () => {
+      expect(resolveCreateProjectFormat(undefined)).toBe("MF2");
+    });
+
+    test("uses explicit flag over base project format", () => {
+      expect(
+        resolveCreateProjectFormat("NONE", {
+          project: { name: "base", format: "MF1" },
+        })
+      ).toBe("NONE");
+      expect(
+        resolveCreateProjectFormat("MF1", {
+          project: { name: "base", format: "MF2" },
+        })
+      ).toBe("MF1");
+    });
+
+    test("inherits format from base.project.format when flag is omitted", () => {
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base", format: "MF1" },
+        })
+      ).toBe("MF1");
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base", format: "NONE" },
+        })
+      ).toBe("NONE");
+    });
+
+    test("inherits format from MsgProject-like format getter when project.format missing", () => {
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base" },
+          format: "MF1",
+        })
+      ).toBe("MF1");
+    });
+
+    test("falls back to MF2 when base has no format", () => {
+      expect(
+        resolveCreateProjectFormat(undefined, {
+          project: { name: "base" },
+        })
+      ).toBe("MF2");
+    });
+  });
+
   describe("calculateRelativePath", () => {
     test("returns relative path from projects to translations (sibling dirs)", () => {
       const projects = "/root/i18n/projects";

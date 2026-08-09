@@ -180,6 +180,71 @@ describe("CreateProject command", () => {
       expect(content).toMatch(/"fr":\s*\["fr"\]/);
     });
 
+    test("defaults project format to MF2 in boilerplate when flag omitted", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toMatch(
+        /project:\s*\{\s*name:\s*["']myApp["']\s*,\s*version:\s*1\s*,\s*format:\s*["']MF2["']\s*\}/
+      );
+    });
+
+    test("writes --format value into project settings", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "fr", "--format", "MF1"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toMatch(
+        /project:\s*\{\s*name:\s*["']myApp["']\s*,\s*version:\s*1\s*,\s*format:\s*["']MF1["']\s*\}/
+      );
+    });
+
+    test("writes -f short option value into project settings", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "fr", "-f", "NONE"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toMatch(
+        /project:\s*\{\s*name:\s*["']myApp["']\s*,\s*version:\s*1\s*,\s*format:\s*["']NONE["']\s*\}/
+      );
+    });
+
+    test("extend inherits format from base project when --format omitted", async () => {
+      setupValidProject(tmp);
+      const baseContent = `module.exports = {
+  project: { name: 'base', version: 1, format: 'MF1' },
+  locales: { sourceLocale: 'en', pseudoLocale: 'zxx', targetLocales: { en: ['en'], fr: ['fr'] } },
+  loader: async () => ({ title: '', attributes: { lang: '', dir: '' }, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "base.js"), baseContent);
+      await CreateProject.run(["extendedApp", "--extend", "base"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "extendedApp.js"), "utf-8");
+      expect(content).toMatch(
+        /project:\s*\{\s*name:\s*["']extendedApp["']\s*,\s*version:\s*1\s*,\s*format:\s*["']MF1["']\s*\}/
+      );
+    });
+
+    test("explicit --format overrides format inherited from --extend", async () => {
+      setupValidProject(tmp);
+      const baseContent = `module.exports = {
+  project: { name: 'base', version: 1, format: 'MF1' },
+  locales: { sourceLocale: 'en', pseudoLocale: 'zxx', targetLocales: { en: ['en'], fr: ['fr'] } },
+  loader: async () => ({ title: '', attributes: { lang: '', dir: '' }, notes: [], messages: [] })
+};`;
+      writeFileSync(join(tmp, "i18n", "projects", "base.js"), baseContent);
+      await CreateProject.run(
+        ["extendedApp", "--extend", "base", "--format", "NONE"],
+        CLI_ROOT
+      );
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "extendedApp.js"), "utf-8");
+      expect(content).toMatch(
+        /project:\s*\{\s*name:\s*["']extendedApp["']\s*,\s*version:\s*1\s*,\s*format:\s*["']NONE["']\s*\}/
+      );
+    });
+
     test("source locale same as one target", async () => {
       setupValidProject(tmp);
       await CreateProject.run(["myApp", "en", "en", "fr"], CLI_ROOT);
@@ -359,6 +424,13 @@ describe("CreateProject command", () => {
       await expect(CreateProject.run(["myApp", "en", "fr"], CLI_ROOT)).rejects.toThrow(
         /package\.json could not be imported|Invalid package\.json/
       );
+    });
+
+    test("invalid --format value fails", async () => {
+      setupValidProject(tmp);
+      await expect(
+        CreateProject.run(["myApp", "en", "fr", "--format", "ICU"], CLI_ROOT)
+      ).rejects.toThrow(/Expected --format=ICU to be one of|MF1|MF2|NONE/i);
     });
   });
 });

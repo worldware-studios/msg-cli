@@ -2,12 +2,15 @@ import { Args, Command, Flags } from "@oclif/core";
 import { existsSync } from "fs";
 import { join } from "path";
 import {
+  CREATE_PROJECT_FORMATS,
   calculateRelativePath,
   importMsgProjectFile,
   loadPackageJsonForCreateProject,
+  resolveCreateProjectFormat,
   writeMsgProjectFile,
 } from "../../lib/create-project-helpers.js";
 import { findPackageJsonPath } from "../../lib/init-helpers.js";
+import type { MsgFormat } from "../../lib/msg-format.js";
 
 /**
  * Creates a new MsgProject file in the i18n projects directory.
@@ -39,6 +42,12 @@ export default class CreateProject extends Command {
       char: "e",
       description: "Extend an existing project",
     }),
+    format: Flags.option({
+      char: "f",
+      description: "Default message format for the project (MF1, MF2, or NONE)",
+      options: CREATE_PROJECT_FORMATS,
+      // No default: omission must be distinguishable from an explicit MF2 for --extend inheritance.
+    })(),
   };
 
   public async run(): Promise<void> {
@@ -92,6 +101,7 @@ export default class CreateProject extends Command {
     let targetLocales: Record<string, string[]> = {};
     let pseudoLocale = "en-XA";
     let resolvedSource = source?.trim();
+    let baseProject: Awaited<ReturnType<typeof importMsgProjectFile>> | undefined;
     const hasUserSourceAndTargets = Boolean(resolvedSource && targets?.length && targets.some((t) => t?.trim()));
 
     if (flags.extend) {
@@ -99,6 +109,7 @@ export default class CreateProject extends Command {
       if (!base) {
         this.error(`Project '${flags.extend}' could not be found to extend.`, { exit: 1 });
       }
+      baseProject = base;
       if (base.locales?.targetLocales && typeof base.locales.targetLocales === "object") {
         targetLocales = { ...base.locales.targetLocales };
       }
@@ -119,6 +130,13 @@ export default class CreateProject extends Command {
         if (t?.trim()) targetLocales[t.trim()] = [t.trim()];
       }
     }
+
+    // Scaffold: resolve format but do not emit it in the boilerplate yet (tests fail until implement).
+    const format: MsgFormat = resolveCreateProjectFormat(
+      flags.format as MsgFormat | undefined,
+      baseProject
+    );
+    void format;
 
     const loaderPathLine =
       "const path = `${TRANSLATION_IMPORT_PATH}/${project}/${language}/${title}.json`;";
