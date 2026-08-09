@@ -131,12 +131,10 @@ export default class CreateProject extends Command {
       }
     }
 
-    // Scaffold: resolve format but do not emit it in the boilerplate yet (tests fail until implement).
     const format: MsgFormat = resolveCreateProjectFormat(
       flags.format as MsgFormat | undefined,
       baseProject
     );
-    void format;
 
     const loaderPathLine =
       "const path = `${TRANSLATION_IMPORT_PATH}/${project}/${language}/${title}.json`;";
@@ -157,6 +155,7 @@ export default class CreateProject extends Command {
   }`;
 
     const importPath = relPath.replace(/\\/g, "/");
+    const projectSettings = `project: { name: ${JSON.stringify(projectName)}, version: 1, format: ${JSON.stringify(format)} }`;
     const content = isEsm
       ? `import { MsgProject } from '@worldware/msg';
 
@@ -166,7 +165,7 @@ const loader = async (project, title, language) => {
 };
 
 export default MsgProject.create({
-  project: { name: ${JSON.stringify(projectName)}, version: 1 },
+  ${projectSettings},
   locales: {
     sourceLocale: ${JSON.stringify(resolvedSource)},
     pseudoLocale: ${JSON.stringify(pseudoLocale)},
@@ -183,7 +182,7 @@ const loader = async (project, title, language) => {
 };
 
 module.exports = MsgProject.create({
-  project: { name: ${JSON.stringify(projectName)}, version: 1 },
+  ${projectSettings},
   locales: {
     sourceLocale: ${JSON.stringify(resolvedSource)},
     pseudoLocale: ${JSON.stringify(pseudoLocale)},

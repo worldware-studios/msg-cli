@@ -33,10 +33,9 @@ export function resolveCreateProjectFormat(
   flagFormat: MsgFormat | undefined,
   base?: MsgProjectFileData
 ): MsgFormat {
-  // Scaffold stub: always MF2 until implement phase wires real resolution.
-  void flagFormat;
-  void base;
-  return "MF2";
+  if (flagFormat) return flagFormat;
+  const inherited = base?.project?.format ?? base?.format;
+  return inherited ?? "MF2";
 }
 
 /**
