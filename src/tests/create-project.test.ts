@@ -9,7 +9,8 @@ import {
 } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
+import { MSG_DEFAULT_FORMAT } from "@worldware/msg";
 import CreateProject from "../commands/create/project.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -295,6 +296,46 @@ describe("CreateProject command", () => {
       expect(content).toMatch(/"fr":\s*\["fr"\]/);
       expect(content).toMatch(/"de":\s*\["de"\]/);
       expect(content).toContain("zxx");
+    });
+  });
+
+  describe("Format integration", () => {
+    test("generated boilerplate loads as MsgProject with default format", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const outPath = join(tmp, "i18n", "projects", "myApp.js");
+      const mod = await import(pathToFileURL(outPath).href);
+      const project = mod.default;
+      expect(project.format).toBe(MSG_DEFAULT_FORMAT);
+      expect(project.project.format).toBe(MSG_DEFAULT_FORMAT);
+    });
+
+    test("generated boilerplate with -f MF1 loads with format MF1", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "fr", "-f", "MF1"], CLI_ROOT);
+
+      const outPath = join(tmp, "i18n", "projects", "myApp.js");
+      const mod = await import(pathToFileURL(outPath).href);
+      expect(mod.default.format).toBe("MF1");
+      expect(mod.default.project.format).toBe("MF1");
+    });
+
+    test("extend inherits format from a real MsgProject base instance", async () => {
+      setupValidProject(tmp);
+      const baseContent = `const { MsgProject } = require('@worldware/msg');
+module.exports = MsgProject.create({
+  project: { name: 'base', version: 1, format: 'NONE' },
+  locales: { sourceLocale: 'en', pseudoLocale: 'zxx', targetLocales: { en: ['en'], fr: ['fr'] } },
+  loader: async () => ({ title: '', attributes: { lang: '', dir: '' }, notes: [], messages: [] })
+});`;
+      writeFileSync(join(tmp, "i18n", "projects", "base.js"), baseContent);
+      await CreateProject.run(["extendedApp", "--extend", "base"], CLI_ROOT);
+
+      const outPath = join(tmp, "i18n", "projects", "extendedApp.js");
+      const mod = await import(pathToFileURL(outPath).href);
+      expect(mod.default.format).toBe("NONE");
+      expect(mod.default.project.format).toBe("NONE");
     });
   });
 
