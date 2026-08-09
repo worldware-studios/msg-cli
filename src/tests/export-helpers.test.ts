@@ -166,6 +166,75 @@ describe("export-helpers", () => {
       const result = await importMsgResourcesFromPaths(twoPaths);
       expect(result).toHaveLength(2);
     });
+
+    test("imports MsgResource from named resource export (create resource shape)", async () => {
+      const tmp = join(tmpdir(), `msg-named-resource-${Date.now()}`);
+      mkdirSync(tmp, { recursive: true });
+      const cliRoot = join(__dirname, "..", "..");
+      try {
+        const { symlinkSync } = await import("fs");
+        try {
+          const target = join(cliRoot, "node_modules");
+          if (existsSync(target)) {
+            symlinkSync(target, join(tmp, "node_modules"), "dir");
+          }
+        } catch {
+          // Skip if symlink fails (e.g. sandbox)
+        }
+
+        writeFileSync(
+          join(tmp, "Named.msg.js"),
+          `const { MsgProject, MsgResource, getLang } = require('@worldware/msg');
+const project = MsgProject.create({
+  project: { name: 'namedProj' },
+  locales: {
+    sourceLocale: 'en',
+    pseudoLocale: 'en-XA',
+    targetLocales: { en: ['en'] },
+  },
+  loader: async () => ({
+    title: '',
+    attributes: { lang: '', dir: '', dnt: false },
+    messages: [],
+  }),
+});
+const resource = MsgResource.create({
+  title: 'Named',
+  attributes: { lang: 'en', dir: 'ltr' },
+  notes: [{ type: 'DESCRIPTION', content: 'This is the Named resource.' }],
+}, project);
+resource.add('sampleKey', 'Sample value.', {}, [
+  { type: 'DESCRIPTION', content: 'This is first message.' },
+]);
+async function getMessages() {
+  return await resource.getTranslation(getLang());
+}
+module.exports = { resource, getMessages };
+`,
+          "utf-8"
+        );
+
+        const result = await importMsgResourcesFromPaths([
+          join(tmp, "Named.msg.js"),
+        ]);
+        expect(result).toHaveLength(1);
+        expect(result[0].title).toBe("Named");
+        expect(result[0].getProject().project.name).toBe("namedProj");
+        expect(
+          result[0].getData().messages?.some((m) => m.key === "sampleKey")
+        ).toBe(true);
+
+        const { createRequire } = await import("module");
+        const req = createRequire(join(tmp, "Named.msg.js"));
+        const mod = req(join(tmp, "Named.msg.js")) as {
+          getMessages: () => Promise<MsgResource>;
+        };
+        const translated = await mod.getMessages();
+        expect(translated.title).toBe("Named");
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
   });
 
   describe("groupResourcesByProject", () => {

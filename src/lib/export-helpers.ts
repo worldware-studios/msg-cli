@@ -64,6 +64,8 @@ export async function findMsgResourceFilePaths(
 
 /**
  * Dynamically imports MsgResource objects from an array of file paths.
+ * Accepts default export, named `resource` / `MsgResource`, or CJS
+ * `module.exports = { resource }` (where `default` is the exports object).
  * @param filePaths - Array of absolute paths to .msg.(ts|js) files
  * @returns Promise resolving to array of MsgResource instances
  * @throws Error if any file cannot be imported as a valid MsgResource
@@ -78,14 +80,25 @@ export async function importMsgResourcesFromPaths(
     }
     const url = pathToFileURL(filePath).href;
     const mod = await dynamicImportFromUrl(url);
-    const resource: unknown =
-      mod.default ?? (mod as { resource?: unknown }).resource ?? (mod as { MsgResource?: unknown }).MsgResource;
-    if (!isMsgResourceLike(resource)) {
+    const defaultExport = mod.default;
+    const defaultRecord =
+      defaultExport && typeof defaultExport === "object"
+        ? (defaultExport as Record<string, unknown>)
+        : undefined;
+    const candidates: unknown[] = [
+      defaultExport,
+      mod.resource,
+      mod.MsgResource,
+      defaultRecord?.resource,
+      defaultRecord?.MsgResource,
+    ];
+    const resource = candidates.find(isMsgResourceLike);
+    if (!resource) {
       throw new Error(
         `Failed to import MsgResource from ${filePath}: no valid export found`
       );
     }
-    result.push(resource as MsgResource);
+    result.push(resource);
   }
   return result;
 }
