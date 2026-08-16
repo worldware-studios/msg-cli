@@ -125,7 +125,7 @@ Each unit’s resolved message `format` (`NONE` / `MF1` / `MF2`) is written as `
 2. Dynamically import the `MsgResource` objects using the array of file paths, and return an array of `MsgResource` objects.
 3. Group the `MsgResource` objects by their associated `MsgProject` project name, and return an array of objects with type `{ project: string, resources: MsgResource[] }`
 4. If the `--project [projectName]` filter out the objects where the `project` property does not match `projectName`. Return the filtered array.
-5. Serialize each `resources` array to an XLIFF 2.0 string, and return an array of objects with type `{project: string, xliff: string}`
+5. Serialize each `resources` array to an XLIFF 2.0 string, and return an array of objects with type `{project: string, xliff: string}`. Omit file/unit `srcDir` when `dir` is the default `"auto"`.
 6. Iterate through the array of objects, writing each `xliff` string to a file in the `l10n/xliff` directory that has the `project` name as the filename.
 
 ## 7. Implementation

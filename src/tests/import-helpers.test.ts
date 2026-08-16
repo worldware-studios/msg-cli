@@ -499,6 +499,26 @@ one {{一}}
       expect(data.notes![0].content).toBe("File note");
     });
 
+    test("defaults resource dir to auto when file has no trgDir", () => {
+      const fileEl = {
+        "@_original": "R.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "k1",
+          segment: { source: "S", target: "T" },
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result).toBeInstanceOf(MsgResource);
+      expect(result!.attributes.dir).toBe("auto");
+    });
+
     test("extracts from groups (nested structure)", () => {
       const fileEl = {
         "@_original": "Grouped.json",

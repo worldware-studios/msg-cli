@@ -137,6 +137,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
     - Iterate through the file objects in the parsed xliff object in order to create new translated `MsgResource` objects.
       - Use the `original` attribute of the file object to extract the `title` from the file name. 
       - Use the `trgLang`, `trgDir`, and `translate` attributes to create an object of type `MsgAttributes`.
+        - Default `dir` to `"auto"` when the file has no `trgDir`.
       - If there is `notes` object directly inside the `file` object, use it to create an array of `MsgNote` objects.
       - Use `MsgResource.create` with the information just gathered to create a new resource with an empty `messages` array
       - Recursively iterate through the file object's `unit` and `group` objects (if any) in order to add messages:

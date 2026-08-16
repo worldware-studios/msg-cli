@@ -269,7 +269,7 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
       `id="${fileId}"`,
       `original="${escapeXml(orig)}"`,
     ];
-    if (attrs.dir) {
+    if (attrs.dir && attrs.dir !== "auto") {
       fileAttrs.push(`srcDir="${escapeXml(attrs.dir)}"`);
     }
     if (attrs.dnt === true) {
@@ -295,7 +295,7 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
       if (msgAttr?.dnt === true) {
         msgAttrs.push('translate="no"');
       }
-      if (msgAttr?.dir) {
+      if (msgAttr?.dir && msgAttr.dir !== "auto") {
         msgAttrs.push(`srcDir="${escapeXml(msgAttr.dir)}"`);
       }
 
