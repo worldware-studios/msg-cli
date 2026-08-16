@@ -278,18 +278,6 @@ export interface PgsSegmentImport {
   body: string;
 }
 
-function parsePatternFromSegmentBody(body: string): unknown[] {
-  const trimmed = body.trim();
-  if (!trimmed) return [];
-  try {
-    const m = parseMessage(trimmed);
-    if ((m as { type?: string }).type !== "message") return [];
-    return (m as { pattern: unknown[] }).pattern;
-  } catch {
-    return [];
-  }
-}
-
 function ensureFallbackVariant(
   keysCount: number,
   variants: SelectMessage["variants"]
@@ -313,6 +301,9 @@ function ensureFallbackVariant(
 
 /**
  * Builds MF2 source string from PGS `pgs:switch` and segment bodies.
+ *
+ * Segment bodies are spliced into quoted patterns as-is so XLIFF `\` sequences
+ * are not dropped (`\t`/`\n` are invalid MF2 escapes) or double-escaped.
  */
 export function pgsImportToSelectMessage(
   switchAttr: string,
@@ -374,7 +365,9 @@ export function pgsImportToSelectMessage(
     );
     variants.push({
       keys,
-      value: parsePatternFromSegmentBody(seg.body),
+      // Empty pattern: stringify emits `{{}}`, then we splice the raw XLIFF
+      // body so `\t` / `\n` / `\{` are not dropped or double-escaped.
+      value: [],
     });
   }
 
@@ -397,9 +390,16 @@ export function pgsImportToSelectMessage(
     return null;
   }
 
-  return stringifyMessage(
+  const bodies = segments.map((seg) => seg.body);
+  while (bodies.length < msg.variants.length) {
+    bodies.push(segments[segments.length - 1]?.body ?? "");
+  }
+
+  const skeleton = stringifyMessage(
     msg as unknown as Parameters<typeof stringifyMessage>[0]
   );
+  let i = 0;
+  return skeleton.replace(/\{\{\}\}/g, () => `{{${bodies[i++] ?? ""}}}`);
 }
 
 /** Compare two MF2 strings by parsing and re-stringifying both (for tests). */
