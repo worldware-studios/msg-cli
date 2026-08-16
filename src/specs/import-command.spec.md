@@ -147,7 +147,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
         - If there is a `translate` attribute and it is set to `no`,  set the `dnt` property of the object to `true`.
         - If there are any `notes` associated with the `unit`, extract them to `MsgNote` objects using the uppercased category as the note `type`
         - Iterate through each `segment` in the `unit` and get the text for the segment translation for the `target` object.
-        - Reconstruct the complete translated `value` from the collected segments, according to the xliff 2.0 specification rules. 
+        - Reconstruct the complete translated `value` from the collected segments, according to the xliff 2.0 specification rules. Treat segment text as already-decoded; do not pre-escape `\` before JSON serialization. For PGS units, splice segment bodies into the reconstructed message without re-parsing them as MF2 (so `\n`, `\t`, `\{`, and `\\` survive). 
         - Use the `unit` element's `name` and the complete translated `value` for the unit, together with the `MsgAttribute` object and `MsgNote` array, to programmatically add a new message to the `MsgResource` created earlier.
     - Use MsgResource.toJSON(true) to get a serialized JSON string without notes.
     - Create a directory named after the project name inside `l10n/translations`, if it does not already exist
