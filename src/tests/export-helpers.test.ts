@@ -474,6 +474,29 @@ one {{One item}}
       expect(result[0].xliff).toContain('srcDir="rtl"');
     });
 
+    test("omits file srcDir when resource dir is auto", () => {
+      const res = createTestResource("R", "P", [{ key: "k1", value: "v1" }], {
+        attributes: { dir: "auto" },
+      });
+      const result = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ]);
+      expect(result[0].xliff).not.toContain("srcDir");
+    });
+
+    test("omits unit srcDir when message dir is auto", () => {
+      const res = createTestResource("R", "P", [
+        { key: "k1", value: "v1", attributes: { dir: "auto" } },
+      ], {
+        attributes: { dir: "ltr" },
+      });
+      const xliff = serializeResourceGroupsToXliff([
+        { project: "P", resources: [res] },
+      ])[0]!.xliff;
+      expect(xliff).toContain('srcDir="ltr"');
+      expect(xliff).not.toMatch(/<unit[^>]*srcDir="auto"/);
+    });
+
     test("sets unit type from resolved message format", () => {
       const res = createTestResource(
         "R",

@@ -128,6 +128,32 @@ describe("CreateProject command", () => {
       expect(content).not.toContain("export default");
     });
 
+    test("loader fallback uses dir auto and warns without the error object (CJS)", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toContain("dir: 'auto'");
+      expect(content).not.toContain("dir: ''");
+      expect(content).toContain(
+        "console.warn(`Translations for locale ${language} could not be loaded.`);"
+      );
+      expect(content).not.toContain("could not be loaded.`, error)");
+    });
+
+    test("loader fallback uses dir auto and warns without the error object (ESM)", async () => {
+      setupValidProject(tmp, { type: "module" });
+      await CreateProject.run(["myApp", "en", "fr"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toContain("dir: 'auto'");
+      expect(content).not.toContain("dir: ''");
+      expect(content).toContain(
+        "console.warn(`Translations for locale ${language} could not be loaded.`);"
+      );
+      expect(content).not.toContain("could not be loaded.`, error)");
+    });
+
     test("TypeScript project writes .js file", async () => {
       setupValidProject(tmp);
       writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({ compilerOptions: {} }));
