@@ -34,12 +34,12 @@ const loader = async (project, title, language) => {
     const module = await import(path, { with: {type: 'json'}});
     return module.default;
   } catch (error) {
-    console.warn(`Translations for locale ${language} could not be loaded.`, error);
+    console.warn(`Translations for locale ${language} could not be loaded.`);
     return { 
       title, 
       attributes: { 
         lang: language, 
-        dir: '' 
+        dir: 'auto' 
       },
        notes: [], 
        messages: []
@@ -94,6 +94,8 @@ When retrieving the path for the `i18n` and `l10n` directories from the package.
 - It should default `format` to `MF2` when `--format` is omitted and not inherited
 - It should inherit `format` from the base project when `--extend` is used and `--format` is omitted
 - It should always write `format` on the generated `project` settings object
+- It should write `dir: 'auto'` in the loader fallback attributes
+- It should warn when translations cannot be loaded without passing the caught error object
 - It should write an importable file.
 
 ### Constraints

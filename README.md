@@ -232,9 +232,9 @@ msg export -p myApp
 
 - **Message keys** — Stored as unit `id` (sanitized for XML) and `name` (original key).
 - **Resource notes** — Emitted as file-level `<notes>` with category (e.g. `description`, `comment`).
-- **Resource attributes** — `dir` → file `srcDir`; `dnt` → file `translate="no"`.
+- **Resource attributes** — `dir` → file `srcDir` when it is not the default `"auto"`; `dnt` → file `translate="no"`.
 - **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
-- **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` attribute (XLIFF text direction for the segment).
+- **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` unless it is `"auto"`.
 - **Message format** — Resolved `format` (`NONE` / `MF1` / `MF2`, including inheritance from resource/project) is written as the unit `type` attribute using the XLIFF custom form `msg:NONE`, `msg:MF1`, or `msg:MF2`.
 
 **Plural, gender, select (PGS):** Classifiable plural/select messages are exported to the [XLIFF 2.2 Plural, Gender, and Select module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html) (`xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0"`): `pgs:switch` on the `<unit>`, and one `<segment>` per variant with `pgs:case`.
@@ -354,14 +354,14 @@ msg import
 # or: msg import --project myApp --language fr
 ```
 
-**5. Resulting French translation file** — `l10n/translations/myApp/fr/messages.json` (notes omitted; `attributes.dir` is empty unless the XLIFF `<file>` carries `trgDir`):
+**5. Resulting French translation file** — `l10n/translations/myApp/fr/messages.json` (notes omitted; `attributes.dir` is `"auto"` unless the XLIFF `<file>` carries `trgDir`):
 
 ```json
 {
   "title": "messages",
   "attributes": {
     "lang": "fr",
-    "dir": "",
+    "dir": "auto",
     "dnt": false
   },
   "messages": [
