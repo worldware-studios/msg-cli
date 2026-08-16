@@ -197,7 +197,9 @@ function categoryToNoteType(category: string): string {
   return map[lower] ?? category.toUpperCase();
 }
 
-/** Extracts text from segment source/target, handling inline elements per XLIFF 2.0. */
+/** Extracts text from segment source/target, handling inline elements per XLIFF 2.0.
+ * Returns the already-decoded in-memory string; JSON encoding is left to `toJSON()`.
+ */
 function extractSegmentText(segment: unknown): string {
   if (segment == null) return "";
   const seg = segment as Record<string, unknown>;
