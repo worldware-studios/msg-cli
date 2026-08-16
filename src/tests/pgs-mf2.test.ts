@@ -79,4 +79,19 @@ masculine {{His party}}
       "other",
     ]);
   });
+
+  test("import preserves backslash sequences in segment bodies", () => {
+    const body = "Hello \\{name\\} tab:\\t nl:\\n slash:\\\\";
+    const back = pgsImportToSelectMessage("plural:n", [
+      { caseAttr: "one", body },
+      { caseAttr: "other", body },
+    ]);
+    expect(back).not.toBeNull();
+    expect(back).toContain("\\{name\\}");
+    expect(back).toContain("\\t");
+    expect(back).toContain("\\n");
+    const parsed = JSON.parse(JSON.stringify({ value: back })) as { value: string };
+    expect(parsed.value).toBe(back);
+    expect(parsed.value).not.toContain("\\\\{name\\\\}");
+  });
 });

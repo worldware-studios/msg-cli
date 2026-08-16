@@ -105,4 +105,18 @@ describe("pgs-mf1", () => {
     expect(back).toMatch(/\{g,\s*select,/);
     expect(back).toMatch(/\{n,\s*plural,/);
   });
+
+  test("import preserves backslash sequences in segment bodies through JSON.parse", () => {
+    const body = "tab:\\t nl:\\n slash:\\\\";
+    const back = pgsImportToMf1Message("plural:n", [
+      { caseAttr: "one", body },
+      { caseAttr: "other", body },
+    ]);
+    expect(back).not.toBeNull();
+    expect(back).toContain("\\t");
+    expect(back).toContain("\\n");
+    expect(back).toContain("\\\\");
+    const parsed = JSON.parse(JSON.stringify({ value: back })) as { value: string };
+    expect(parsed.value).toBe(back);
+  });
 });

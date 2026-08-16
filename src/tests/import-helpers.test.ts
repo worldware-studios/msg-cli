@@ -564,6 +564,127 @@ one {{一}}
       expect(result!.getData(true).messages![0].value).toBe("你好");
     });
 
+    test("preserves backslash sequences from XLIFF target through JSON.parse", () => {
+      const expected = "Hello \\{name\\} tab:\\t nl:\\n slash:\\\\";
+      const fileEl = {
+        "@_original": "R.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "esc",
+          segment: { source: "x", target: expected },
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      expect(result!.get("esc")?.value).toBe(expected);
+      const parsed = JSON.parse(result!.toJSON(true)) as {
+        messages: { value: string }[];
+      };
+      expect(parsed.messages[0]!.value).toBe(expected);
+    });
+
+    test("preserves backslash sequences when parsing real XLIFF XML", () => {
+      const expected = "Hello \\{name\\} tab:\\t nl:\\n slash:\\\\";
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.2" version="2.2" srcLang="en" trgLang="zh">
+  <file id="f1" original="R.json">
+    <unit id="u1" name="esc">
+      <segment>
+        <source>x</source>
+        <target>${expected}</target>
+      </segment>
+    </unit>
+  </file>
+</xliff>`;
+      const parsedXml = parseXliff20(xml) as Record<string, unknown>;
+      const xliffRoot = parsedXml.xliff as Record<string, unknown>;
+      const fileEl = (
+        Array.isArray(xliffRoot.file) ? xliffRoot.file[0] : xliffRoot.file
+      ) as Record<string, unknown>;
+      const result = extractResourceFromXliffFile(fileEl, "zh", project, ["zh"]);
+      expect(result!.get("esc")?.value).toBe(expected);
+      const parsed = JSON.parse(result!.toJSON(true)) as {
+        messages: { value: string }[];
+      };
+      expect(parsed.messages[0]!.value).toBe(expected);
+    });
+
+    test("preserves backslash sequences in PGS MF2 segment bodies", () => {
+      const body = "Hello \\{name\\}";
+      const fileEl = {
+        "@_original": "R.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "items",
+          "@_type": "msg:MF2",
+          "@_pgs:switch": "plural:n",
+          segment: [
+            {
+              "@_pgs:case": "one",
+              source: "one",
+              target: body,
+            },
+            {
+              "@_pgs:case": "other",
+              source: "other",
+              target: body,
+            },
+          ],
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      const value = result!.get("items")?.value ?? "";
+      expect(value).toContain("\\{name\\}");
+      const parsed = JSON.parse(result!.toJSON(true)) as {
+        messages: { value: string }[];
+      };
+      expect(parsed.messages[0]!.value).toContain("\\{name\\}");
+      expect(parsed.messages[0]!.value).not.toContain("\\\\{name\\\\}");
+    });
+
+    test("preserves backslash sequences in PGS MF1 segment bodies", () => {
+      const body = "Hello \\{name\\}";
+      const fileEl = {
+        "@_original": "R.json",
+        "@_trgLang": "zh",
+        unit: {
+          "@_id": "u1",
+          "@_name": "items",
+          "@_type": "msg:MF1",
+          "@_pgs:switch": "plural:count",
+          segment: [
+            { "@_pgs:case": "one", source: "one", target: body },
+            { "@_pgs:case": "other", source: "other", target: body },
+          ],
+        },
+      };
+      const result = extractResourceFromXliffFile(
+        fileEl as unknown as Record<string, unknown>,
+        "zh",
+        project,
+        ["zh"]
+      );
+      const value = result!.get("items")?.value ?? "";
+      // MF1 rebuild parses MF2-style `\{` as a literal brace and ICU-quotes it.
+      expect(value).toContain("Hello '{'name'}'");
+      const parsed = JSON.parse(result!.toJSON(true)) as {
+        messages: { value: string }[];
+      };
+      expect(parsed.messages[0]!.value).toContain("Hello '{'name'}'");
+      expect(parsed.messages[0]!.value).not.toContain("\\\\{");
+    });
+
     test("extracts segment with target as object (inline elements)", () => {
       const fileEl = {
         "@_original": "I.json",

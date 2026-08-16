@@ -177,4 +177,40 @@ one {{One item}}
     expect(msg.value).toMatch(/\.match/);
     expect(msg.value).toContain("One item");
   });
+
+  test("backslash sequences survive export→import JSON round-trip", () => {
+    const expected = "Hello \\{name\\} tab:\\t nl:\\n slash:\\\\";
+    const project = createProject("escApp", { format: "NONE" });
+    const resource = MsgResource.create(
+      {
+        title: "R",
+        attributes: { lang: "en", dir: "ltr", dnt: false },
+        messages: [{ key: "esc", value: expected, attributes: { format: "NONE" } }],
+      },
+      project
+    );
+
+    const exported = serializeResourceGroupsToXliff([
+      { project: "escApp", resources: [resource] },
+    ])[0]!.xliff;
+    expect(exported).toContain("\\{name\\}");
+
+    const bilingual = toBilingualXliff(exported, "zh");
+    const parsed = parseXliff20(bilingual);
+    const xliffRoot = (parsed as Record<string, unknown>).xliff as Record<
+      string,
+      unknown
+    >;
+    const fileEl = (
+      Array.isArray(xliffRoot.file) ? xliffRoot.file[0] : xliffRoot.file
+    ) as Record<string, unknown>;
+
+    const imported = extractResourceFromXliffFile(fileEl, "zh", project, ["zh"]);
+    expect(imported).not.toBeNull();
+    expect(imported!.get("esc")?.value).toBe(expected);
+    const json = JSON.parse(imported!.toJSON(true)) as {
+      messages: { value: string }[];
+    };
+    expect(json.messages[0]!.value).toBe(expected);
+  });
 });
