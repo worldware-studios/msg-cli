@@ -381,7 +381,7 @@ export function extractResourceFromXliffFile(
 
   const attributes = {
     lang: trgLang,
-    dir: trgDir ?? "",
+    dir: trgDir ?? "auto",
     dnt,
   };
 

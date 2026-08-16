@@ -143,7 +143,7 @@ export default class CreateProject extends Command {
     const loaderPathLine =
       "const path = `${TRANSLATION_IMPORT_PATH}/${project}/${language}/${title}.json`;";
     const loaderWarnLine =
-      "console.warn(`Translations for locale ${language} could not be loaded.`, error);";
+      "console.warn(`Translations for locale ${language} could not be loaded.`);";
     const loaderBody = `${loaderPathLine}
   try {
     const module = await import(path, { with: { type: 'json' } });
@@ -152,7 +152,7 @@ export default class CreateProject extends Command {
     ${loaderWarnLine}
     return {
       title,
-      attributes: { lang: language, dir: '' },
+      attributes: { lang: language, dir: 'auto' },
       notes: [],
       messages: []
     };
