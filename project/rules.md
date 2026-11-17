@@ -9,9 +9,11 @@ process conflict, fix the conflict rather than silently ignoring either.
 A change is only "done" when all of the following pass locally:
 
 1. **Tests:** `npm test` — all tests green.
-2. **Type-check:** `npx tsc --noEmit` — no type errors.
+2. **Type-check:** `npm run typecheck` — no type errors in `src/`, including
+   tests and fixtures.
 3. **Build:** `npm run build` — compiles cleanly with tsup.
-4. **Coverage:** `npm run coverage` — meets the coverage target (see below).
+4. **Coverage:** `npm run coverage` — meets the coverage target (see below);
+   it exits non-zero when a Vitest coverage threshold is not met.
 5. **Docs:** command/flag/arg behavior changes are reflected in `README.md`
    and the relevant `src/specs/*.spec.md` files.
 
@@ -44,7 +46,12 @@ that phase pass.
   before the fix and passes after.
 - Write tests before implementation (TDD) as described in the process.
 - **Coverage target:** cumulative line/branch coverage **> 90%**; aim higher.
-  The target applies to the whole suite, not only integration/e2e tests.
+  The target applies to the whole suite, not only integration/e2e tests. It is
+  enforced by `coverage.thresholds` in `vite.config.mjs` (90 for lines,
+  branches, functions, and statements) and checked in CI.
+- **Test files must type-check.** `tsconfig.test.json` checks `src/tests/`
+  (as ESM, the way Vitest runs them); `npm run typecheck` runs it alongside
+  the build config. Fix test type errors rather than casting them away.
 - **Coverage below target on `main`:** if `main` is already below the target,
   a PR meets the coverage gate when it does not lower any coverage metric
   relative to `main` (compare `npm run coverage` on both) and the shortfall is
@@ -91,7 +98,8 @@ traceability through the phases instead.
 - Target the parent/default branch (`main` unless told otherwise).
 - PR description must explain the "why" as well as the "what", link the issue,
   and include examples where useful.
-- CI (type-check + tests + build) must be green before requesting review.
+- CI (type-check + tests with coverage thresholds + build) must be green
+  before requesting review.
 - Respond to review comments and CI failures promptly; push fixes as new
   commits rather than force-pushing shared history.
 - Keep PRs focused and reasonably sized; split large work into multiple PRs.
