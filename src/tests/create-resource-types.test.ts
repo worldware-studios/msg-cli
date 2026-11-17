@@ -118,7 +118,9 @@ export default project;
       line: TYPO_LINE,
       code: TS_ARGUMENT_NOT_ASSIGNABLE,
     });
-    expect(consumerErrors[0]?.message).toContain("'nope'");
+    // TypeScript prints string literal types in double quotes.
+    expect(consumerErrors[0]?.message).toContain(`'"nope"'`);
+    expect(consumerErrors[0]?.message).toContain(`'"sampleKey" | "sampleKey2"'`);
   });
 
   test("without the const assertion keys stay untyped (typing is opt-in)", () => {
