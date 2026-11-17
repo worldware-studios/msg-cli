@@ -1,6 +1,7 @@
 ---
 name: implement-github-issue
 description: Implement a feature, bug fix, or task described in a GitHub issue by following this repo's development process. Use when the user asks to work on, implement, fix, or execute a GitHub issue (e.g. "work on issue #42", "implement #17", "fix the bug in issue 5").
+argument-hint: "<issue number>"
 ---
 
 # Implement a GitHub Issue
@@ -20,7 +21,10 @@ conflict, follow the project doc and tell the user.
 
 ## Getting started
 
-You need the issue number. If the user didn't give one, ask. Use the `gh` CLI
+Issue number from the invocation (may be empty): $ARGUMENTS
+
+You need the issue number. If it isn't above and the user didn't give one, ask.
+Use the `gh` CLI
 for all GitHub work (`gh issue view <n>`, `gh pr create`, `gh pr ready`, etc.).
 
 ## Workflow at a glance
@@ -44,7 +48,8 @@ The full detail is in `project/process.md`; do not skip reading it. The phases:
   **Lightweight** track at the start (see `project/process.md` → "Choosing a
   track") and let the user override it.
 - **Respect approval gates.** Phases marked **[approval]** require explicit user
-  approval before you proceed. Do not race ahead.
+  approval before you proceed. At each gate, present your results and end
+  your turn. Do not ask for approval and then keep going in the same turn.
 - **Honor the Definition of done.** Before requesting approval to advance a
   phase, run the relevant checks from `project/rules.md`: `npm test`,
   `npx tsc --noEmit`, `npm run build`, and `npm run coverage` (target > 90%).
