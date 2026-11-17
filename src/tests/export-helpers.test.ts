@@ -12,7 +12,7 @@ import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 import { pathToFileURL } from "url";
-import { MsgProject, MsgResource } from "@worldware/msg";
+import { MsgProject, MsgResource, type MsgNote } from "@worldware/msg";
 import {
   findMsgResourceFilePaths,
   importMsgResourcesFromPaths,
@@ -48,8 +48,6 @@ function createTestProject(
   });
 }
 
-/** Note shape matching MsgNote from @worldware/msg. */
-type MsgNoteLike = { type: string; content: string };
 
 /** Creates a minimal MsgResource for use in tests. */
 function createTestResource(
@@ -59,7 +57,7 @@ function createTestResource(
     key: string;
     value: string;
     attributes?: { dnt?: boolean; dir?: string; format?: "NONE" | "MF1" | "MF2" };
-    notes?: MsgNoteLike[];
+    notes?: MsgNote[];
   }[] = [],
   resourceOpts?: {
     attributes?: {
@@ -68,7 +66,7 @@ function createTestResource(
       dnt?: boolean;
       format?: "NONE" | "MF1" | "MF2";
     };
-    notes?: MsgNoteLike[];
+    notes?: MsgNote[];
     projectFormat?: "NONE" | "MF1" | "MF2";
   }
 ) {

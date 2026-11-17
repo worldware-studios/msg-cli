@@ -224,7 +224,7 @@ describe("Export command", () => {
 
     test("i18n/resources directory missing exits with message", async () => {
       setupPackageWithI18nAndL10n(tmp);
-      const warnSpy = vi.spyOn(Export.prototype, "warn").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(Export.prototype, "warn").mockImplementation((input) => input);
       rmSync(join(tmp, "i18n", "resources"), { recursive: true, force: true });
       mkdirSync(join(tmp, "i18n"), { recursive: true });
 

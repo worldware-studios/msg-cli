@@ -292,7 +292,7 @@ describe("Import command", () => {
       };
       writeFileSync(join(tmp, "package.json"), JSON.stringify(pkg, null, 2));
       mkdirSync(join(tmp, "i18n", "projects"), { recursive: true });
-      const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation((input) => input);
 
       await ImportCmd.run([], CLI_ROOT);
 
