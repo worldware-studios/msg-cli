@@ -79,6 +79,12 @@ Note: there is currently no `lint` npm script. User-facing docs also live in
   `main`. Checks out the repo, sets up Node from `.nvmrc`, then runs
   `npm ci`, `npx tsc --noEmit`, `npm test`, and `npm run build`. PRs must be
   green here before review.
+- **Waiting on CI for the latest push:** right after a push,
+  `gh pr checks --watch` can still report the previous commit's run. Wait on
+  the run whose `headSha` matches `git rev-parse HEAD` instead:
+  `gh run list --branch <branch> --limit 1 --json databaseId,headSha` (confirm
+  the SHA, retrying after a few seconds if it is the old one), then
+  `gh run watch <databaseId> --exit-status`.
 - **`.github/workflows/verify-and-release.yml` (Verify and Release):** runs on
   pushes to `main`. A `verify` job runs type-check, tests, and build (plus
   dependency signature audit); a `release` job builds again and runs

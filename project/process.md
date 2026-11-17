@@ -56,6 +56,9 @@ keep momentum on the lightweight track.
 4. Stub out command class properties (`description`, `flags`, `args`, `run`)
    and helper function signatures, defining input and output types.
 5. Create failing unit tests in the appropriate files under `src/tests/`.
+   When a test asserts text produced by a tool (compiler diagnostics, CLI
+   output, generated XLIFF/JSON), capture the real output from a quick
+   prototype first and assert against that, rather than guessing its format.
 6. Wire stub helpers into real call sites (e.g. export/import command paths)
    when needed so integration tests fail for the right reason — not only unit
    tests against isolated stubs.
@@ -63,13 +66,15 @@ keep momentum on the lightweight track.
 8. Commit the scaffolding in small, coherent commits prefixed with `scaffold:`
    (see `project/rules.md`).
 9. Push the branch and open a **draft pull request** whose title follows
-   Conventional Commits, so CI runs from here on. **[approval]**
+   Conventional Commits, so CI runs from here on. CI is expected to fail at
+   this point because the new tests fail by design; it must be green from
+   phase 4 onward. **[approval]**
 
 ### 4. Iteratively implement code until all unit tests pass.
 1. Implement all command methods and helpers using the selected approach until
    all unit tests pass. Do not change tests unless proven wrong (see rules).
 2. Keep commits small and coherent as you go, prefixed with `implement:`; push
-   regularly so CI stays green.
+   regularly so CI runs on each step and turns green once tests pass.
 3. Report when all code is written and tests pass; confirm CI is green.
 4. Review the code with the user and incorporate suggestions. **[approval]**
 
