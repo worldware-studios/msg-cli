@@ -26,7 +26,7 @@ jobs:
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
       - name: Type-check
-        run: npx tsc --noEmit
+        run: npm run typecheck
       - name: Test
         run: npm test
       - name: Build
