@@ -195,8 +195,10 @@ describe("create-resource-helpers", () => {
       expect(content).toContain("lang: 'en'");
       expect(content).toContain("dir: 'ltr'");
       expect(content).toContain("export const resource = MsgResource.create");
-      expect(content).toContain(".add('sampleKey'");
-      expect(content).toContain(".add('sampleKey2'");
+      expect(content).toContain("messages: /** @type {const} */ ([");
+      expect(content).toContain("key: 'sampleKey'");
+      expect(content).toContain("key: 'sampleKey2'");
+      expect(content).not.toMatch(/\.add\('sampleKey/);
       expect(content).toContain("export async function getMessages()");
       expect(content).toContain("resource.getTranslation(getLang())");
       expect(content).not.toContain("export default");
@@ -215,6 +217,10 @@ describe("create-resource-helpers", () => {
       expect(content).toContain("const { MsgResource, getLang } = require('@worldware/msg')");
       expect(content).toContain("require('#i18n/projects/Main.js')");
       expect(content).toContain("const resource = MsgResource.create");
+      expect(content).toContain("messages: /** @type {const} */ ([");
+      expect(content).toContain("key: 'sampleKey'");
+      expect(content).toContain("key: 'sampleKey2'");
+      expect(content).not.toMatch(/\.add\('sampleKey/);
       expect(content).toContain("async function getMessages()");
       expect(content).toContain("module.exports = {\n  resource,\n  getMessages\n}");
       expect(content).not.toContain("export default");
@@ -304,6 +310,28 @@ describe("create-resource-helpers", () => {
         "{type: 'DESCRIPTION', content: 'This is the Messages resource.'}"
       );
     });
+
+    test.each([true, false])(
+      "keeps sample message attributes and notes inside create() (isEsm=%s)",
+      (isEsm) => {
+        const content = generateMsgResourceContent({
+          title: "Messages",
+          projectName: "Main",
+          sourceLocale: "en",
+          dir: "ltr",
+          isEsm,
+        });
+        expect(content).toContain("attributes: { dnt: true }");
+        expect(content).toContain("content: 'This is first message.'");
+        expect(content).toContain("content: 'This is the second message.'");
+        expect(content).toContain(
+          "content: 'The {name} parameter holds the user name.'"
+        );
+        // .add() is still documented as the untyped way to add messages.
+        expect(content).toMatch(/add\(key, value, attributes, notes\)/);
+        expect(content).not.toContain("resource\n    .add(");
+      }
+    );
   });
 
   describe("writeMsgResourceFile", () => {
