@@ -25,6 +25,7 @@ import {
   type ImportResult,
 } from "../lib/import-helpers.js";
 import { messagesStructurallyEqual } from "../lib/pgs-mf2.js";
+import { XMLParser } from "fast-xml-parser";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_XLIFF = join(__dirname, "fixtures", "xliff");
@@ -35,12 +36,6 @@ vi.mock("fast-xml-parser", async (importOriginal) => {
   return {
     XMLParser: class extends actual.XMLParser {
       parse(xml: string) {
-        const g = globalThis as { __xliffParseThrow?: unknown };
-        if (g.__xliffParseThrow !== undefined) {
-          const thrown = g.__xliffParseThrow;
-          g.__xliffParseThrow = undefined;
-          throw thrown;
-        }
         if (
           typeof (globalThis as { __xliffParseReturnNull?: boolean }).__xliffParseReturnNull === "boolean" &&
           (globalThis as { __xliffParseReturnNull?: boolean }).__xliffParseReturnNull
@@ -1309,8 +1304,14 @@ one {{一}}
     });
 
     test("parseXliff20 reports a generic message when the parser throws a non-Error", () => {
-      (globalThis as { __xliffParseThrow?: unknown }).__xliffParseThrow = "boom";
-      expect(() => parseXliff20("<xliff/>")).toThrow("Malformed XLIFF: Failed to parse XLIFF");
+      const spy = vi.spyOn(XMLParser.prototype, "parse").mockImplementationOnce(() => {
+        throw "boom";
+      });
+      try {
+        expect(() => parseXliff20("<xliff/>")).toThrow("Malformed XLIFF: Failed to parse XLIFF");
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     test("unit key falls back to @_id, then to an empty string", () => {

@@ -129,7 +129,7 @@ masculine {{His party}}
       expect(classifySelectMessageForPgs(msg)).toEqual([{ kind: "plural", name: "x" }]);
     });
 
-    test("classify treats :number with a plain-object or non-literal select option as plural", () => {
+    test("classify reads select=ordinal from plain-object options and ignores non-literal select values", () => {
       expect(classifySelectMessageForPgs(selectOver(numberExpr({ select: { type: "literal", value: "ordinal" } })))).toEqual([
         { kind: "ordinal", name: "x" },
       ]);
@@ -206,7 +206,7 @@ masculine {{His party}}
 
     // Known bug: the ordinal option is built as a Map, but messageformat
     // stores options as a plain object, so stringifyMessage drops it and the
-    // ordinal imports as a plural. Remove .fails once fixed.
+    // ordinal imports as a plural. Remove .fails once fixed (#48).
     test.fails("pgsImportToSelectMessage keeps select=ordinal (known bug)", () => {
       expect(pgsImportToSelectMessage("ordinal:n", ordinalSegments)).toContain(
         "select=ordinal"
