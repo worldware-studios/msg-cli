@@ -168,6 +168,12 @@ describe("create-project-helpers", () => {
       expect(result).toBeUndefined();
     });
 
+    test("returns the module namespace when the project file has no default export", async () => {
+      writeFileSync(join(tmp, "named.ts"), "export const project = { name: 'named' };");
+      const result = (await importMsgProjectFile(tmp, "named")) as { project?: { name?: string } };
+      expect(result?.project?.name).toBe("named");
+    });
+
     test("returns default export when .js file exists", async () => {
       writeFileSync(
         join(tmp, "base.js"),
