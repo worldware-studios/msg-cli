@@ -1,5 +1,12 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "fs";
 import { dirname, join } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
@@ -75,13 +82,16 @@ describe("generated MsgResource typing (ESM)", () => {
   }
 
   beforeAll(() => {
-    tmp = join(tmpdir(), `msg-cr-types-${Date.now()}`);
+    // The generated file imports @worldware/msg; without node_modules every
+    // check would fail with a misleading TS2307 instead of a key error.
+    const nodeModules = join(CLI_ROOT, "node_modules");
+    if (!existsSync(nodeModules)) {
+      throw new Error(`Run npm install first: ${nodeModules} is missing.`);
+    }
+    tmp = mkdtempSync(join(tmpdir(), "msg-cr-types-"));
     mkdirSync(join(tmp, "i18n", "projects"), { recursive: true });
     mkdirSync(join(tmp, "i18n", "resources"), { recursive: true });
-    const nodeModules = join(CLI_ROOT, "node_modules");
-    if (existsSync(nodeModules)) {
-      symlinkSync(nodeModules, join(tmp, "node_modules"), "dir");
-    }
+    symlinkSync(nodeModules, join(tmp, "node_modules"), "dir");
     // Stand-in for a generated MsgProject: only its type matters here.
     writeFileSync(
       join(tmp, "i18n", "projects", "Main.d.ts"),
