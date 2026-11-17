@@ -394,7 +394,8 @@ The CLI does not expose a programmatic API. For library usage, see [@worldware/m
 - **Setup:** `npm install`
 - **Build:** `npm run build`
 - **Tests:** `npm run test`
-- **Coverage:** `npm run coverage`
+- **Type-check:** `npm run typecheck` (source and tests)
+- **Coverage:** `npm run coverage` (fails below 90% lines, branches, functions, or statements)
 
 Source layout:
 

@@ -12,7 +12,7 @@ import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { fileURLToPath } from "url";
 import { pathToFileURL } from "url";
-import { MsgProject, MsgResource } from "@worldware/msg";
+import { MsgProject, MsgResource, type MsgNote } from "@worldware/msg";
 import {
   findMsgResourceFilePaths,
   importMsgResourcesFromPaths,
@@ -48,8 +48,6 @@ function createTestProject(
   });
 }
 
-/** Note shape matching MsgNote from @worldware/msg. */
-type MsgNoteLike = { type: string; content: string };
 
 /** Creates a minimal MsgResource for use in tests. */
 function createTestResource(
@@ -59,7 +57,7 @@ function createTestResource(
     key: string;
     value: string;
     attributes?: { dnt?: boolean; dir?: string; format?: "NONE" | "MF1" | "MF2" };
-    notes?: MsgNoteLike[];
+    notes?: MsgNote[];
   }[] = [],
   resourceOpts?: {
     attributes?: {
@@ -68,7 +66,7 @@ function createTestResource(
       dnt?: boolean;
       format?: "NONE" | "MF1" | "MF2";
     };
-    notes?: MsgNoteLike[];
+    notes?: MsgNote[];
     projectFormat?: "NONE" | "MF1" | "MF2";
   }
 ) {
@@ -667,6 +665,56 @@ one {{One item}}
       expect(readFileSync(join(xliffDir, "projB.xliff"), "utf-8")).toBe(
         "<xliff>B</xliff>"
       );
+    });
+  });
+
+  describe("edge cases", () => {
+    /** Serializes one resource on its own and returns the XLIFF string. */
+    function xliffFor(resource: MsgResource): string {
+      const [group] = serializeResourceGroupsToXliff(groupResourcesByProject([resource]));
+      return group!.xliff;
+    }
+
+    test("importMsgResourcesFromPaths rejects paths without .msg. in the filename", async () => {
+      await expect(importMsgResourcesFromPaths(["/tmp/plain.ts"])).rejects.toThrow(
+        /does not have \.msg\. in filename/
+      );
+    });
+
+    test("unit ids starting with a digit get a k prefix", () => {
+      const xliff = xliffFor(createTestResource("R", "p", [{ key: "1st", value: "First" }]));
+      expect(xliff).toContain('id="k1st"');
+      expect(xliff).toContain('name="1st"');
+    });
+
+    test("x- note types pass through and unknown note types get an x- prefix", () => {
+      const xliff = xliffFor(
+        createTestResource("R", "p", [
+          {
+            key: "k",
+            value: "v",
+            notes: [
+              { type: "X-REVIEW" as MsgNote["type"], content: "a" },
+              { type: "CUSTOM" as MsgNote["type"], content: "b" },
+            ],
+          },
+        ])
+      );
+      expect(xliff).toContain('category="x-review"');
+      expect(xliff).toContain('category="x-custom"');
+    });
+
+    test("a do-not-translate resource sets translate=no on its file", () => {
+      const xliff = xliffFor(
+        createTestResource("R", "p", [{ key: "k", value: "v" }], { attributes: { dnt: true } })
+      );
+      expect(xliff).toMatch(/<file [^>]*translate="no"/);
+    });
+
+    test("a group with no resources defaults srcLang to en", () => {
+      const [group] = serializeResourceGroupsToXliff([{ project: "empty", resources: [] }]);
+      expect(group!.xliff).toContain('srcLang="en"');
+      expect(group!.xliff).not.toContain("<file");
     });
   });
 });

@@ -327,6 +327,15 @@ describe("init-helpers", () => {
       rmSync(tmp, { recursive: true, force: true });
     });
 
+    test("creates compilerOptions when tsconfig.json has none", () => {
+      const tsconfigPath = join(tmp, "tsconfig.json");
+      writeFileSync(tsconfigPath, "{}", "utf-8");
+      addTsconfigPaths(tsconfigPath, "src/i18n", "res/l10n");
+      const content = JSON.parse(readFileSync(tsconfigPath, "utf-8"));
+      expect(content.compilerOptions.baseUrl).toBe(".");
+      expect(content.compilerOptions.paths).toBeDefined();
+    });
+
     test("adds baseUrl and paths to tsconfig.json", () => {
       const tsconfigPath = join(tmp, "tsconfig.json");
       writeFileSync(tsconfigPath, '{"compilerOptions":{}}', "utf-8");

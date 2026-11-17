@@ -21,9 +21,9 @@ The `/implement-github-issue <n>` skill walks through that workflow.
 | Purpose          | Command                     |
 | ---------------- | --------------------------- |
 | Tests            | `npm test`                  |
-| Type-check       | `npx tsc --noEmit`          |
+| Type-check       | `npm run typecheck`         |
 | Build            | `npm run build`             |
-| Coverage         | `npm run coverage`          |
+| Coverage (gate)  | `npm run coverage`          |
 | API docs         | `npm run docs`              |
 | Run CLI from src | `./bin/dev.js <command>`    |
 

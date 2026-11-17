@@ -13,6 +13,14 @@ export default defineConfig({
   },
   test: {
     coverage: {
+      // Enforces the > 90% target in project/rules.md; `npm run coverage`
+      // (run in CI) fails if any metric drops below it.
+      thresholds: {
+        lines: 90,
+        branches: 90,
+        functions: 90,
+        statements: 90,
+      },
       exclude: [
         '**/*.json',
         'src/tests/**',

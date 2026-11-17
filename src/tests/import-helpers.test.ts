@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "fs";
 import { join, dirname } from "path";
@@ -23,6 +25,7 @@ import {
   type ImportResult,
 } from "../lib/import-helpers.js";
 import { messagesStructurallyEqual } from "../lib/pgs-mf2.js";
+import { XMLParser } from "fast-xml-parser";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_XLIFF = join(__dirname, "fixtures", "xliff");
@@ -1269,6 +1272,191 @@ one {{一}}
       await writeTranslationFiles(tmp, result);
       expect(existsSync(join(tmp, "app", "de", "A.json"))).toBe(true);
       expect(existsSync(join(tmp, "app", "de", "B.json"))).toBe(true);
+    });
+  });
+
+  describe("edge cases", () => {
+    const project = createTestProject();
+
+    /** Extracts the zh resource from a file element, failing if it is skipped. */
+    function extract(fileEl: Record<string, unknown>) {
+      const resource = extractResourceFromXliffFile(fileEl, "zh", project, ["zh"]);
+      expect(resource).not.toBeNull();
+      return resource!;
+    }
+
+    /** Extracts the zh resource and returns its messages keyed by message key. */
+    function messagesByKey(fileEl: Record<string, unknown>) {
+      return Object.fromEntries(
+        (extract(fileEl).getData().messages ?? []).map((m) => [m.key, m])
+      );
+    }
+
+    test("findXliffFilePaths ignores entries that are neither files nor directories", async () => {
+      const tmp = mkdtempSync(join(tmpdir(), "msg-import-symlink-"));
+      try {
+        writeFileSync(join(tmp, "a.xliff"), "<xliff/>");
+        // A dangling symlink is reported as neither a file nor a directory.
+        symlinkSync(join(tmp, "missing-target"), join(tmp, "dangling.xliff"));
+        expect(await findXliffFilePaths(tmp)).toEqual([join(tmp, "a.xliff")]);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    test("parseXliff20 reports a generic message when the parser throws a non-Error", () => {
+      const spy = vi.spyOn(XMLParser.prototype, "parse").mockImplementationOnce(() => {
+        throw "boom";
+      });
+      try {
+        expect(() => parseXliff20("<xliff/>")).toThrow("Malformed XLIFF: Failed to parse XLIFF");
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    test("unit key falls back to @_id, then to an empty string", () => {
+      const byKey = messagesByKey({
+        "@_original": "E.json",
+        unit: [
+          { "@_id": "fromId", segment: { source: "a", target: "A" } },
+          { segment: { source: "b", target: "B" } },
+        ],
+      });
+      expect(byKey["fromId"]?.value).toBe("A");
+      expect(byKey[""]?.value).toBe("B");
+    });
+
+    test("unit without segments imports an empty value", () => {
+      const byKey = messagesByKey({ "@_original": "E.json", unit: { "@_name": "empty" } });
+      expect(byKey["empty"]?.value).toBe("");
+    });
+
+    test("unit and file notes default to the comment category and empty content", () => {
+      const resource = extract({
+        "@_original": "E.json",
+        notes: { note: [{ "#text": "file note" }, { "@_id": "n1" }] },
+        unit: {
+          "@_name": "k",
+          notes: { note: [{ "@_category": "description" }, { "#text": "plain" }] },
+          segment: { source: "s", target: "T" },
+        },
+      });
+      expect(resource.notes).toEqual([
+        { type: "COMMENT", content: "file note" },
+        { type: "COMMENT", content: "" },
+      ]);
+      expect(resource.get("k")?.notes).toEqual([
+        { type: "DESCRIPTION", content: "" },
+        { type: "COMMENT", content: "plain" },
+      ]);
+    });
+
+    test("unit lang and dir that differ from the file are kept; empty values become undefined", () => {
+      const byKey = messagesByKey({
+        "@_original": "E.json",
+        "@_trgDir": "rtl",
+        unit: [
+          { "@_name": "emptyLang", "@_trgLang": "", "@_trgDir": "", segment: { target: "x" } },
+        ],
+      });
+      const attrs = byKey["emptyLang"]?.attributes;
+      // Empty overrides are dropped rather than stored as "", so the message
+      // gets the library defaults instead of an empty lang/dir.
+      expect(attrs?.lang).toBeUndefined();
+      expect(attrs?.dir).toBe("auto");
+    });
+
+    test("missing original falls back to unknown.json; empty original yields an empty title", () => {
+      expect(extract({ unit: { "@_name": "k", segment: { target: "T" } } }).title).toBe("unknown");
+      expect(
+        extract({ "@_original": "", unit: { "@_name": "k", segment: { target: "T" } } }).title
+      ).toBe("");
+    });
+
+    test("collects units from multiple groups, nested groups, and groups with several units", () => {
+      const byKey = messagesByKey({
+        "@_original": "E.json",
+        group: [
+          {
+            unit: [
+              { "@_name": "g1a", segment: { target: "1a" } },
+              { "@_name": "g1b", segment: { target: "1b" } },
+            ],
+          },
+          {
+            group: [
+              { unit: { "@_name": "n1", segment: { target: "n1" } } },
+              { unit: { "@_name": "n2", segment: { target: "n2" } } },
+            ],
+          },
+        ],
+      });
+      expect(Object.keys(byKey).sort()).toEqual(["g1a", "g1b", "n1", "n2"]);
+    });
+
+    test("PGS unit whose cases cannot be rebuilt falls back to joined segment text", () => {
+      const byKey = messagesByKey({
+        "@_original": "E.json",
+        unit: {
+          "@_name": "pgs",
+          "@_pgs:switch": "not a valid switch",
+          segment: [
+            { "@_pgs:case": "one", target: "A" },
+            { "@_pgs:case": "other", target: "B" },
+          ],
+        },
+      });
+      expect(byKey["pgs"]?.value).toBe("AB");
+    });
+
+    test("importMsgProject rejects a project module whose default export is not an object", async () => {
+      const tmp = mkdtempSync(join(tmpdir(), "msg-import-proj-prim-"));
+      try {
+        writeFileSync(join(tmp, "num.ts"), "export default 42;");
+        await expect(importMsgProject(tmp, "num")).rejects.toThrow(
+          /does not export a valid MsgProject/
+        );
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    test("importMsgProject accepts a module with named locales and no default export", async () => {
+      const tmp = mkdtempSync(join(tmpdir(), "msg-import-proj-named-"));
+      try {
+        writeFileSync(
+          join(tmp, "named.ts"),
+          "export const locales = { targetLocales: { zh: ['zh'] } };"
+        );
+        const loaded = await importMsgProject(tmp, "named");
+        expect(Object.keys(loaded.locales.targetLocales)).toEqual(["zh"]);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+
+    test("processXliffFile skips file elements whose locale is unsupported", async () => {
+      const tmp = mkdtempSync(join(tmpdir(), "msg-import-multi-file-"));
+      try {
+        writeFileSync(
+          join(tmp, "test.ts"),
+          readFileSync(join(FIXTURES_PROJECTS, "test.ts"), "utf-8")
+        );
+        const xliffPath = join(tmp, "test.zh.xliff");
+        writeFileSync(
+          xliffPath,
+          `<?xml version="1.0"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">
+  <file id="f1" original="Kept.json"><unit name="a"><segment><source>a</source><target>甲</target></segment></unit></file>
+  <file id="f2" original="Skipped.json" trgLang="ja"><unit name="b"><segment><source>b</source><target>乙</target></segment></unit></file>
+</xliff>`
+        );
+        const result = await processXliffFile(xliffPath, tmp, "test", "zh");
+        expect(result?.resources.map((r) => r.title)).toEqual(["Kept"]);
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
+      }
     });
   });
 });

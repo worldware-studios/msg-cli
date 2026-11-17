@@ -97,6 +97,15 @@ describe("CreateProject command", () => {
       expect(content).toContain("loader");
     });
 
+    test("whitespace-only target locales are ignored", async () => {
+      setupValidProject(tmp);
+      await CreateProject.run(["myApp", "en", "  ", "fr"], CLI_ROOT);
+
+      const content = readFileSync(join(tmp, "i18n", "projects", "myApp.js"), "utf-8");
+      expect(content).toMatch(/"fr":\s*\["fr"\]/);
+      expect(content).not.toMatch(/"\s+":/);
+    });
+
     test("project creation with multiple target locales", async () => {
       setupValidProject(tmp);
       await CreateProject.run(["myApp", "en", "fr", "de", "es"], CLI_ROOT);

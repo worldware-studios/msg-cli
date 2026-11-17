@@ -107,6 +107,12 @@ describe("create-resource-helpers", () => {
       expect(result).toBeUndefined();
     });
 
+    test("reads sourceLocale from a project module with named exports only", async () => {
+      writeFileSync(join(tmp, "named.ts"), "export const locales = { sourceLocale: 'he' };");
+      const result = await importMsgProjectForResource(tmp, "named");
+      expect(result).toEqual({ sourceLocale: "he", dir: "rtl" });
+    });
+
     test("returns sourceLocale and dir ltr for en locale", async () => {
       writeFileSync(
         join(tmp, "myProject.js"),
