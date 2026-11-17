@@ -123,9 +123,11 @@ function escapeSingleQuoted(value: string): string {
 
 /**
  * Generates the MsgResource file content as a string.
- * Emits ESM or CJS boilerplate that creates a MsgResource, adds sample
- * messages via chainable `.add()`, and exports `resource` plus an async
- * `getMessages` loader that calls `resource.getTranslation(getLang())`.
+ * Emits ESM or CJS boilerplate that creates a MsgResource with sample
+ * messages passed to `create()` inside a JSDoc `@type {const}` assertion
+ * (the `.js` form of `as const`), so TypeScript infers the message key union for
+ * `.msg.js` files. Exports `resource` plus an async `getMessages` loader that
+ * calls `resource.getTranslation(getLang())`.
  * Project import uses the `#i18n/projects/<name>.js` alias from `msg init`.
  * @param params - Title, projectName, sourceLocale, dir, and isEsm
  * @returns The generated file content
@@ -144,7 +146,7 @@ export function generateMsgResourceContent(params: {
   const resourceNote = `This is the ${escapeSingleQuoted(title)} resource.`;
   const projectImport = `#i18n/projects/${escapeSingleQuoted(projectName)}.js`;
 
-  const createAndAdd = `MsgResource.create({
+  const createWithMessages = `MsgResource.create({
     title: ${titleStr},
     attributes: {
       lang: ${langStr},
@@ -152,22 +154,35 @@ export function generateMsgResourceContent(params: {
     },
     notes: [
       {type: 'DESCRIPTION', content: '${resourceNote}'}
-    ]
+    ],
+    /**
+     * The JSDoc const assertion lets TypeScript infer the message keys, so
+     * resource.get('unknownKey') is a compile error. Remove it to opt out.
+     */
+    messages: /** @type {const} */ ([
+      {
+        key: 'sampleKey',
+        value: 'Sample value.',
+        notes: [
+          { type: 'DESCRIPTION', content: 'This is first message.' }
+        ]
+      },
+      {
+        key: 'sampleKey2',
+        value: 'Hi, {name}',
+        attributes: { dnt: true },
+        notes: [
+          { type: 'DESCRIPTION', content: 'This is the second message.' },
+          { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
+        ]
+      }
+    ])
   }, project);
 
-/** 
- * Add messages to the resource using add(key, value, attributes, notes)
- * The add method is chainable.
- */
-
-resource
-    .add('sampleKey', 'Sample value.', {}, [
-      { type: 'DESCRIPTION', content: 'This is first message.' }
-    ])
-    .add('sampleKey2', 'Hi, {name}', { dnt: true }, [
-      { type: 'DESCRIPTION', content: 'This is the second message.' },
-      { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
-    ]);`;
+/**
+ * More messages can be added with the chainable add(key, value, attributes, notes),
+ * but keys added that way are not part of the inferred key type.
+ */`;
 
   if (isEsm) {
     return `/** ESM module **/
@@ -177,7 +192,7 @@ import project from '${projectImport}';
 
 /** Create a MsgResource object */
 
-export const resource = ${createAndAdd}
+export const resource = ${createWithMessages}
 
 /** 
  * An async function to get a translated version of the resource 
@@ -195,7 +210,7 @@ export async function getMessages() {
 const { MsgResource, getLang } = require('@worldware/msg');
 const project = require('${projectImport}');
 
-const resource = ${createAndAdd}
+const resource = ${createWithMessages}
 
 /** 
  * An async function to get a translated version of the resource 
