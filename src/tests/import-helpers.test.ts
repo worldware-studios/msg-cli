@@ -1278,13 +1278,14 @@ one {{一}}
   describe("edge cases", () => {
     const project = createTestProject();
 
-    /** Extracts a zh resource and returns its messages keyed by message key. */
+    /** Extracts the zh resource from a file element, failing if it is skipped. */
     function extract(fileEl: Record<string, unknown>) {
       const resource = extractResourceFromXliffFile(fileEl, "zh", project, ["zh"]);
       expect(resource).not.toBeNull();
       return resource!;
     }
 
+    /** Extracts the zh resource and returns its messages keyed by message key. */
     function messagesByKey(fileEl: Record<string, unknown>) {
       return Object.fromEntries(
         (extract(fileEl).getData().messages ?? []).map((m) => [m.key, m])
@@ -1334,27 +1335,21 @@ one {{一}}
     test("unit and file notes default to the comment category and empty content", () => {
       const resource = extract({
         "@_original": "E.json",
-        notes: { note: { "#text": "file note" } },
+        notes: { note: [{ "#text": "file note" }, { "@_id": "n1" }] },
         unit: {
           "@_name": "k",
           notes: { note: [{ "@_category": "description" }, { "#text": "plain" }] },
           segment: { source: "s", target: "T" },
         },
       });
-      expect(resource.notes).toEqual([{ type: "COMMENT", content: "file note" }]);
+      expect(resource.notes).toEqual([
+        { type: "COMMENT", content: "file note" },
+        { type: "COMMENT", content: "" },
+      ]);
       expect(resource.get("k")?.notes).toEqual([
         { type: "DESCRIPTION", content: "" },
         { type: "COMMENT", content: "plain" },
       ]);
-    });
-
-    test("file-level note without category or text gets comment and empty content", () => {
-      const resource = extract({
-        "@_original": "E.json",
-        notes: { note: { "@_id": "n1" } },
-        unit: { "@_name": "k", segment: { source: "s", target: "T" } },
-      });
-      expect(resource.notes).toEqual([{ type: "COMMENT", content: "" }]);
     });
 
     test("unit lang and dir that differ from the file are kept; empty values become undefined", () => {
