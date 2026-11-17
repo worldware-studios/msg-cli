@@ -20,22 +20,35 @@ export const resource = MsgResource.create({
     },
     notes: [
       {type: 'DESCRIPTION', content: 'This is the <title> resource.'}
-    ]
+    ],
+    /**
+     * The JSDoc const assertion lets TypeScript infer the message keys, so
+     * resource.get('unknownKey') is a compile error. Remove it to opt out.
+     */
+    messages: /** @type {const} */ ([
+      {
+        key: 'sampleKey',
+        value: 'Sample value.',
+        notes: [
+          { type: 'DESCRIPTION', content: 'This is first message.' }
+        ]
+      },
+      {
+        key: 'sampleKey2',
+        value: 'Hi, {name}',
+        attributes: { dnt: true },
+        notes: [
+          { type: 'DESCRIPTION', content: 'This is the second message.' },
+          { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
+        ]
+      }
+    ])
   }, project);
 
-/** 
- * Add messages to the resource using add(key, value, attributes, notes)
- * The add method is chainable.
+/**
+ * More messages can be added with the chainable add(key, value, attributes, notes),
+ * but keys added that way are not part of the inferred key type.
  */
-
-resource
-    .add('sampleKey', 'Sample value.', {}, [
-      { type: 'DESCRIPTION', content: 'This is first message.' }
-    ])
-    .add('sampleKey2', 'Hi, {name}', { dnt: true }, [
-      { type: 'DESCRIPTION', content: 'This is the second message.' },
-      { type: 'PARAMETERS', content: 'The {name} parameter holds the user name.' }
-    ]);
 
 /** 
  * An async function to get a translated version of the resource 
@@ -48,6 +61,8 @@ export async function getMessages() {
 ```
 
 CommonJS projects get the same structure with `require` / `module.exports = { resource, getMessages }`.
+
+The sample messages are passed to `MsgResource.create()` inside a JSDoc const assertion (`/** @type {const} */ (…)`) rather than added with `.add()`. Generated files are always `.js`, where `as const` is a syntax error; the JSDoc form is understood by TypeScript and editors. With `@worldware/msg` 0.13+ this makes `resource` a `MsgResource<'sampleKey' | 'sampleKey2'>`, so unknown keys are compile errors under `checkJs` or in TypeScript consumers. `.add()` still works, but keys added that way are untyped. The CJS template uses the same form for consistency, though CommonJS consumers get no type benefit.
 
 The terms in angle brackets `<>` above are variables to be replaced with the actual values. If the sourceLocale uses `ar` or `he` as the language subtag, set `dir` to `'rtl'`. Otherwise, it should be set to `'ltr'` by default.
 
@@ -73,6 +88,7 @@ The general order of operations for the command happy path should be as follows:
 - As a `Application Developer`, I want `to quickly scaffold a resource file`, so that `I do not have to do it myself`.
 - As a `Application Developer`, I want `the option to automatically open the file`, so that `I can quickly start editing it`.
 - As a `Application Developer`, I want `the scaffolded resource to expose getMessages()`, so that `I can load a pre-translated resource for the runtime locale`.
+- As a `Application Developer`, I want `the scaffolded resource to have typed message keys`, so that `misspelled keys are caught at compile time`.
 
 ## 3. Functionality
 
@@ -88,7 +104,7 @@ The general order of operations for the command happy path should be as follows:
 - It `imports the package.json file and gets the module type` in order to `determine what module type to use for the generated file`
 - It `retrieves the sourceLocale from the MsgProject instance` in order to `set the language on the MsgResource file`
 - It `tries to calculate the base direction (dir) based on the language subtag` in order to `set the direction on the MsgResource file`
-- It `creates a template string for a MsgResource file with sample .add() messages and getMessages` in order to `produce the content for the MsgResource file`
+- It `creates a template string for a MsgResource file with sample messages declared in `create({ messages })` under a JSDoc const assertion, and getMessages` in order to `produce the content for the MsgResource file`
 - It `determines the module type of the surrounding project` in order to `produce the correct export syntax for the generated content`
 - It `writes the generated content to a file named <title>.msg.js` in order to `persist the MsgResource`
 
@@ -104,6 +120,7 @@ The general order of operations for the command happy path should be as follows:
 - It `must` always write a `.js` file (not `.ts`), even when `tsconfig.json` is present.
 - It `must` import the project via `#i18n/projects/<projectName>.js`.
 - It `must` export a named `resource` and an async `getMessages()` loader.
+- It `must` declare sample messages in `MsgResource.create({ messages })` wrapped in `/** @type {const} */ (…)` so message keys are inferred (ESM and CJS).
 - It `should` error if the `i18n/projects` or `i18n/resources` directories do not exist and prompt to run the `init` command.
 - It `should` error if the `projectName` or `title` arguments are not provided.
 - It `should` provide an option to open the MsgResource file after it is created.

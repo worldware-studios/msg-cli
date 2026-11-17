@@ -167,7 +167,7 @@ msg create resource myProject messages --edit
 - Imports the project via the `#i18n/projects/<projectName>.js` alias (added by `msg init`).
 - Sets `lang` from the project's `sourceLocale` and `dir` to `rtl` for Arabic/Hebrew, `ltr` otherwise.
 - Exports a named `resource` plus an async `getMessages()` helper that returns `resource.getTranslation(getLang())`, so the resource can be pre-translated for the runtime locale.
-- Includes sample messages added via chainable `.add()`. Validates that the generated file is importable.
+- Declares sample messages in `MsgResource.create({ messages })`, wrapped in a JSDoc const assertion (`/** @type {const} */ (…)`, the `.js` form of `as const`), so TypeScript and editors infer the resource's message keys. Validates that the generated file is importable.
 - Errors if i18n/projects or i18n/resources does not exist, the project is not found, or the resource file already exists (unless `--force`).
 
 **Generated file (ESM excerpt):**
@@ -176,11 +176,13 @@ msg create resource myProject messages --edit
 import { MsgResource, getLang } from '@worldware/msg';
 import project from '#i18n/projects/myProject.js';
 
-export const resource = MsgResource.create({ /* title, attributes, notes */ }, project);
-
-resource
-  .add('sampleKey', 'Sample value.', {}, [/* notes */])
-  .add('sampleKey2', 'Hi, {name}', { dnt: true }, [/* notes */]);
+export const resource = MsgResource.create({
+  /* title, attributes, notes */
+  messages: /** @type {const} */ ([
+    { key: 'sampleKey', value: 'Sample value.', notes: [/* … */] },
+    { key: 'sampleKey2', value: 'Hi, {name}', attributes: { dnt: true }, notes: [/* … */] }
+  ])
+}, project);
 
 export async function getMessages() {
   return await resource.getTranslation(getLang());
@@ -194,6 +196,15 @@ import { getMessages } from '#i18n/resources/messages.msg.js';
 
 const messages = await getMessages();
 ```
+
+**Typed message keys:** with `@worldware/msg` 0.13+, the const assertion makes `resource` a `MsgResource<'sampleKey' | 'sampleKey2'>`. In a TypeScript project, or a JS project with `checkJs` / `// @ts-check`, a misspelled key is a compile error:
+
+```javascript
+resource.get('sampleKey');  // ok
+resource.get('sampleKye');  // error: not assignable to 'sampleKey' | 'sampleKey2'
+```
+
+Add your own messages to the `messages` array to keep them typed. Messages added later with the chainable `resource.add(key, value, attributes, notes)` still work at runtime, but their keys are not part of the inferred type. Remove the `/** @type {const} */` cast to opt out of typed keys.
 
 ### export
 
