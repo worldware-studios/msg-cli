@@ -55,16 +55,20 @@ Check these before starting the process; every GitHub step depends on them.
 - `src/tests/` — Vitest tests (`*.test.ts`) and `fixtures/` (sample msg files,
   XLIFF, and expected output).
 - `project/` — development process docs (`info.md`, `process.md`, `rules.md`).
-- Root config: `package.json`, `tsconfig.json`, `tsup.config.ts`,
-  `vite.config.mjs`, `.nvmrc`.
+- Root config: `package.json`, `tsconfig.json` (build; CommonJS, excludes
+  tests), `tsconfig.test.json` (type-checks all of `src/` including tests, as
+  ESM), `tsup.config.ts`, `vite.config.mjs` (Vitest and coverage thresholds),
+  `.nvmrc`.
 
 ## Commands
 
 - **Install deps:** `npm install`.
 - **Test:** `npm test` (`vitest run`).
-- **Coverage:** `npm run coverage` (`vitest run --coverage`).
+- **Coverage:** `npm run coverage` (`vitest run --coverage`); fails if any
+  metric is below the 90% thresholds in `vite.config.mjs`.
 - **Build:** `npm run build` (`tsup` → `dist/`).
-- **Type-check:** `npx tsc --noEmit` (no dedicated npm script).
+- **Type-check:** `npm run typecheck` (`tsc --noEmit` for the build config,
+  then `tsc --noEmit -p tsconfig.test.json` for tests and fixtures).
 - **API docs:** `npm run docs` (`typedoc --entryPointStrategy expand
   src/commands src/lib` → git-ignored `docs/`).
 - **Run the CLI locally:** `./bin/dev.js <command>` (runs from `src/` without a
@@ -77,8 +81,8 @@ Note: there is currently no `lint` npm script. User-facing docs also live in
 
 - **`.github/workflows/ci.yml` (CI):** runs on pull requests and pushes to
   `main`. Checks out the repo, sets up Node from `.nvmrc`, then runs
-  `npm ci`, `npx tsc --noEmit`, `npm test`, and `npm run build`. PRs must be
-  green here before review.
+  `npm ci`, `npm run typecheck`, `npm run coverage` (tests plus coverage
+  thresholds), and `npm run build`. PRs must be green here before review.
 - **Waiting on CI for the latest push:** right after a push,
   `gh pr checks --watch` can still report the previous commit's run. Wait on
   the run whose `headSha` matches `git rev-parse HEAD` instead:
@@ -86,8 +90,9 @@ Note: there is currently no `lint` npm script. User-facing docs also live in
   the SHA, retrying after a few seconds if it is the old one), then
   `gh run watch <databaseId> --exit-status`.
 - **`.github/workflows/verify-and-release.yml` (Verify and Release):** runs on
-  pushes to `main`. A `verify` job runs type-check, tests, and build (plus
-  dependency signature audit); a `release` job builds again and runs
+  pushes to `main`. A `verify` job runs `npm run typecheck`, `npm test`, and
+  the build (plus dependency signature audit); it deliberately skips the
+  coverage thresholds so a coverage dip on `main` cannot block a release; a `release` job builds again and runs
   `npx semantic-release` when verify succeeds (GitHub release + npm publish via
   OIDC trusted publishing / provenance). `package.json` also defines
   `"prepack": "npm run build"` so `dist/` is always produced before

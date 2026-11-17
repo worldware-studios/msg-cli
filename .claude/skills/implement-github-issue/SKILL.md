@@ -52,7 +52,7 @@ The full detail is in `project/process.md`; do not skip reading it. The phases:
   your turn. Do not ask for approval and then keep going in the same turn.
 - **Honor the Definition of done.** Before requesting approval to advance a
   phase, run the relevant checks from `project/rules.md`: `npm test`,
-  `npx tsc --noEmit`, `npm run build`, and `npm run coverage` (target > 90%;
+  `npm run typecheck`, `npm run build`, and `npm run coverage` (target > 90%;
   if `main` is below target, don't regress it — see `project/rules.md`).
 - **TDD.** Write failing tests before implementation; don't weaken or delete
   tests to force a pass unless a test is proven wrong (explain why).
