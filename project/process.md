@@ -25,6 +25,16 @@ Scale the ceremony to the work:
 
 State which track you are using at the start and let the user override it.
 
+**Test, CI, and tooling issues** (no production code to change) follow the
+same track, with two phases reinterpreted:
+
+- **Phase 3:** "failing tests" means adding the new check or config (e.g. a
+  type-check config, coverage thresholds, a CI step) so it fails for the right
+  reason before the work that satisfies it.
+- **Phase 6:** instead of new e2e tests, show that the new check catches a
+  regression (e.g. temporarily drop a test or add a type error, confirm the
+  gate fails, then restore).
+
 ### Approvals
 
 Phases below marked **[approval]** require waiting for explicit user approval
