@@ -119,4 +119,43 @@ describe("pgs-mf1", () => {
     const parsed = JSON.parse(JSON.stringify({ value: back })) as { value: string };
     expect(parsed.value).toBe(back);
   });
+
+  describe("edge cases", () => {
+    test("import rejects an empty segment list and case/switch arity mismatches", () => {
+      expect(pgsImportToMf1Message("plural:n", [])).toBeNull();
+      expect(
+        pgsImportToMf1Message("plural:n", [{ caseAttr: "one other", body: "x" }])
+      ).toBeNull();
+    });
+
+    test("import keeps an empty case body empty", () => {
+      expect(
+        pgsImportToMf1Message("plural:n", [
+          { caseAttr: "one", body: "   " },
+          { caseAttr: "other", body: "# items" },
+        ])
+      ).toBe("{n, plural, one {} other {# items}}");
+    });
+
+    test("import escapes a case body that is itself an MF2 .match message", () => {
+      const body = ".input {$a :string} .match $a * {{x}}";
+      const result = pgsImportToMf1Message("select:g", [{ caseAttr: "other", body }]);
+      // Treated as literal text: ICU braces are quoted so they stay literal.
+      expect(result).toContain("'{'$a :string'}'");
+    });
+
+    test("import drops inline expressions that are not variable references", () => {
+      expect(
+        pgsImportToMf1Message("select:g", [{ caseAttr: "other", body: "a {|lit|} b" }])
+      ).toBe("{g, select, other {a  b}}");
+    });
+
+    test("import writes non-plural variables as {name} and plural variables as #", () => {
+      expect(
+        pgsImportToMf1Message("plural:n", [
+          { caseAttr: "other", body: "{$n} for {$name}" },
+        ])
+      ).toBe("{n, plural, other {# for {name}}}");
+    });
+  });
 });

@@ -1,9 +1,15 @@
 import { describe, expect, test } from "vitest";
 import {
+  classifySelectMessageForPgs,
   messagesStructurallyEqual,
+  mf2KeyToPgsToken,
   parsePgsSwitch,
   pgsImportToSelectMessage,
+  pgsTokenToMf2Key,
+  selectMessageDataToPgsExport,
   selectMessageToPgsExport,
+  type SelectMessage,
+  type VariantKey,
 } from "../lib/pgs-mf2.js";
 
 describe("pgs-mf2", () => {
@@ -93,5 +99,127 @@ masculine {{His party}}
     const parsed = JSON.parse(JSON.stringify({ value: back })) as { value: string };
     expect(parsed.value).toBe(back);
     expect(parsed.value).not.toContain("\\\\{name\\\\}");
+  });
+
+  describe("edge cases", () => {
+    /** Builds a one-selector select message over `$x` with the given declaration value. */
+    function selectOver(
+      declValue: unknown,
+      variants: SelectMessage["variants"] = [
+        { keys: [{ type: "literal", value: "one" }], value: ["a"] },
+        { keys: [{ type: "*" }], value: ["b"] },
+      ]
+    ): SelectMessage {
+      return {
+        type: "select",
+        declarations: [{ type: "input", name: "x", value: declValue }],
+        selectors: [{ type: "variable", name: "x" }],
+        variants,
+      };
+    }
+    const numberExpr = (options?: unknown) => ({
+      type: "expression",
+      functionRef: { type: "function", name: "number", ...(options ? { options } : {}) },
+    });
+    const stringExpr = { type: "expression", functionRef: { type: "function", name: "string" } };
+
+    test("classify skips unrelated declarations before finding the selector's input", () => {
+      const msg = selectOver(numberExpr());
+      msg.declarations.unshift({ type: "local", name: "y", value: {} });
+      expect(classifySelectMessageForPgs(msg)).toEqual([{ kind: "plural", name: "x" }]);
+    });
+
+    test("classify treats :number with a plain-object or non-literal select option as plural", () => {
+      expect(classifySelectMessageForPgs(selectOver(numberExpr({ select: { type: "literal", value: "ordinal" } })))).toEqual([
+        { kind: "ordinal", name: "x" },
+      ]);
+      expect(
+        classifySelectMessageForPgs(
+          selectOver(numberExpr(new Map([["select", { type: "variable", name: "v" }]])))
+        )
+      ).toEqual([{ kind: "plural", name: "x" }]);
+    });
+
+    test("classify returns null for unsupported selectors, declarations, and functions", () => {
+      const noName: SelectMessage = { ...selectOver(numberExpr()), selectors: [{ type: "variable" }] };
+      const literalSelector: SelectMessage = { ...selectOver(numberExpr()), selectors: [{ type: "literal", name: "x" }] };
+      const noDecl: SelectMessage = { ...selectOver(numberExpr()), declarations: [] };
+      expect(classifySelectMessageForPgs(noName)).toBeNull();
+      expect(classifySelectMessageForPgs(literalSelector)).toBeNull();
+      expect(classifySelectMessageForPgs(noDecl)).toBeNull();
+      expect(classifySelectMessageForPgs(selectOver({ type: "variable", name: "x" }))).toBeNull();
+      expect(
+        classifySelectMessageForPgs(
+          selectOver({ type: "expression", functionRef: { type: "function", name: "datetime" } })
+        )
+      ).toBeNull();
+    });
+
+    test("classify falls back to select when a :string variant has a missing or non-literal key", () => {
+      const missingKey = selectOver(stringExpr, [
+        { keys: [{ type: "literal", value: "male" }], value: ["a"] },
+        { keys: [], value: ["b"] },
+      ]);
+      const oddKey = selectOver(stringExpr, [
+        { keys: [{ type: "markup" } as unknown as VariantKey], value: ["a"] },
+        { keys: [{ type: "*" }], value: ["b"] },
+      ]);
+      expect(classifySelectMessageForPgs(missingKey)).toEqual([{ kind: "select", name: "x" }]);
+      expect(classifySelectMessageForPgs(oddKey)).toEqual([{ kind: "select", name: "x" }]);
+    });
+
+    test("mf2KeyToPgsToken maps unknown key types to other", () => {
+      expect(mf2KeyToPgsToken({ type: "markup" } as unknown as VariantKey, "select")).toBe("other");
+    });
+
+    test("pgsTokenToMf2Key maps ordinal other to the catch-all and other tokens to literals", () => {
+      expect(pgsTokenToMf2Key("other", "ordinal")).toEqual({ type: "*" });
+      expect(pgsTokenToMf2Key("few", "ordinal")).toEqual({ type: "literal", value: "few" });
+    });
+
+    test("selectMessageDataToPgsExport returns null for unclassifiable or short-keyed variants", () => {
+      expect(selectMessageDataToPgsExport(selectOver({ type: "variable", name: "x" }))).toBeNull();
+      const shortKeys = selectOver(numberExpr(), [
+        { keys: [{ type: "literal", value: "one" }], value: ["a"] },
+        { keys: [], value: ["b"] },
+      ]);
+      expect(selectMessageDataToPgsExport(shortKeys)).toBeNull();
+    });
+
+    test("pgsImportToSelectMessage rejects invalid switches, mismatched cases, and no segments", () => {
+      expect(pgsImportToSelectMessage("bogus", [{ caseAttr: "one", body: "a" }])).toBeNull();
+      expect(pgsImportToSelectMessage("plural:n", [{ caseAttr: "one two", body: "a" }])).toBeNull();
+      expect(pgsImportToSelectMessage("plural:n", [])).toBeNull();
+    });
+
+    const ordinalSegments = [
+      { caseAttr: "one", body: "{$n}st" },
+      { caseAttr: "other", body: "{$n}th" },
+    ];
+
+    test("pgsImportToSelectMessage rebuilds ordinal selectors as a :number match", () => {
+      const rebuilt = pgsImportToSelectMessage("ordinal:n", ordinalSegments);
+      expect(rebuilt).toContain(".input {$n :number");
+      expect(rebuilt).toContain("one {{{$n}st}}");
+      expect(rebuilt).toContain("* {{{$n}th}}");
+    });
+
+    // Known bug: the ordinal option is built as a Map, but messageformat
+    // stores options as a plain object, so stringifyMessage drops it and the
+    // ordinal imports as a plural. Remove .fails once fixed.
+    test.fails("pgsImportToSelectMessage keeps select=ordinal (known bug)", () => {
+      expect(pgsImportToSelectMessage("ordinal:n", ordinalSegments)).toContain(
+        "select=ordinal"
+      );
+    });
+
+    test("pgsImportToSelectMessage adds a catch-all variant reusing the last body when none is given", () => {
+      const rebuilt = pgsImportToSelectMessage("select:g", [
+        { caseAttr: "a", body: "A" },
+        { caseAttr: "b", body: "B" },
+      ]);
+      expect(rebuilt).not.toBeNull();
+      expect(rebuilt).toMatch(/\*\s*\{\{B\}\}/);
+    });
   });
 });
