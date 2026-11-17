@@ -13,6 +13,17 @@ process in `project/process.md`. Keep it accurate — the process depends on it.
 - **License:** MIT
 - **Published binary:** `msg` (see `bin` / `oclif` config in `package.json`).
 
+## Prerequisites
+
+Check these before starting the process; every GitHub step depends on them.
+
+- **Node.js:** the version in `.nvmrc` (`nvm use`).
+- **GitHub CLI:** `gh` installed and logged in (`gh auth login`) as an account
+  that can create issues and push to the repository. Verify with
+  `gh auth status`.
+- **Git credentials:** if `origin` uses HTTPS, run `gh auth setup-git` once so
+  `git push` authenticates through `gh`.
+
 ## Tech stack
 
 - **Language:** TypeScript (strict mode, target ESNext, module CommonJS,
