@@ -222,6 +222,20 @@ describe("Export command", () => {
       vi.restoreAllMocks();
     });
 
+    test("missing package.json errors", async () => {
+      await expect(Export.run([], CLI_ROOT)).rejects.toThrow(/package\.json/);
+    });
+
+    test("i18n/resources that is a file, not a directory, errors", async () => {
+      const { resourcesDir } = setupPackageWithI18nAndL10n(tmp);
+      rmSync(resourcesDir, { recursive: true, force: true });
+      writeFileSync(resourcesDir, "not a directory");
+
+      await expect(Export.run([], CLI_ROOT)).rejects.toThrow(
+        /Could not read resources directory/
+      );
+    });
+
     test("i18n/resources directory missing exits with message", async () => {
       setupPackageWithI18nAndL10n(tmp);
       const warnSpy = vi.spyOn(Export.prototype, "warn").mockImplementation((input) => input);

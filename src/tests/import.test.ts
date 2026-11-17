@@ -209,6 +209,19 @@ describe("Import command", () => {
       logSpy.mockRestore();
     });
 
+    test("--language with no matching files exits with message", async () => {
+      const { xliffDir } = setupPackageWithI18nAndL10n(tmp);
+      copyFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), join(xliffDir, "test.zh.xliff"));
+      const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+
+      await ImportCmd.run(["--language", "fr"], CLI_ROOT);
+
+      expect(logSpy).toHaveBeenCalledWith(
+        "No XLIFF files found for language 'fr'. Nothing to import."
+      );
+      logSpy.mockRestore();
+    });
+
     test("skips monolingual files (no locale in filename)", async () => {
       const { xliffDir, translationsDir, projectsDir } =
         setupPackageWithI18nAndL10n(tmp);
@@ -304,6 +317,20 @@ describe("Import command", () => {
   });
 
   describe("Errors", () => {
+    test("missing package.json errors", async () => {
+      await expect(ImportCmd.run([], CLI_ROOT)).rejects.toThrow(/package\.json/);
+    });
+
+    test("l10n/xliff that is a file, not a directory, errors", async () => {
+      const { xliffDir } = setupPackageWithI18nAndL10n(tmp);
+      rmSync(xliffDir, { recursive: true, force: true });
+      writeFileSync(xliffDir, "not a directory");
+
+      await expect(ImportCmd.run([], CLI_ROOT)).rejects.toThrow(
+        /Could not read xliff directory/
+      );
+    });
+
     test("malformed XLIFF errors", async () => {
       const { xliffDir, projectsDir } = setupPackageWithI18nAndL10n(tmp);
       copyFileSync(
