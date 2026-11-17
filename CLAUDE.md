@@ -32,8 +32,9 @@ The `/implement-github-issue <n>` skill walks through that workflow.
 - **Approval gates:** phases marked **[approval]** in `project/process.md` end
   your turn. Wait for explicit approval before continuing.
 - **TDD:** write failing tests first; don't weaken tests to force a pass.
-- **Definition of done:** tests, type-check, build, and coverage (> 90%) pass
-  before asking to advance a phase.
+- **Definition of done:** tests, type-check, build, and coverage (> 90%, or no
+  regression vs `main` while `main` is below target; see `project/rules.md`)
+  pass before asking to advance a phase.
 - **Branches:** `msg-cli-<issue number>`, cut from an up-to-date `main`.
 - **Commits:** prefix intermediate commits with the phase (`scaffold:`,
   `implement:`, `optimize:`, `validate:`, `document:`, `refactor:`,

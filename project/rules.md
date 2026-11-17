@@ -45,6 +45,11 @@ that phase pass.
 - Write tests before implementation (TDD) as described in the process.
 - **Coverage target:** cumulative line/branch coverage **> 90%**; aim higher.
   The target applies to the whole suite, not only integration/e2e tests.
+- **Coverage below target on `main`:** if `main` is already below the target,
+  a PR meets the coverage gate when it does not lower any coverage metric
+  relative to `main` (compare `npm run coverage` on both) and the shortfall is
+  tracked in an open issue. Say so when requesting approval rather than adding
+  unrelated tests to the PR.
 - Do not weaken or delete tests to make a change pass unless the test is proven
   wrong; if so, explain why.
 
