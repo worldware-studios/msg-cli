@@ -59,6 +59,11 @@ that phase pass.
   unrelated tests to the PR.
 - Do not weaken or delete tests to make a change pass unless the test is proven
   wrong; if so, explain why.
+- **Bugs found while writing tests:** if a test reveals a bug outside the
+  issue's scope, do not assert the wrong behavior. Either record the correct
+  behavior with `test.fails` and a comment linking the issue (so it turns red
+  once fixed), or leave that path untested. Open a `fix:` issue rather than
+  widening the PR.
 
 ## Branches
 
@@ -104,7 +109,10 @@ traceability through the phases instead.
   commits rather than force-pushing shared history.
 - Keep PRs focused and reasonably sized; split large work into multiple PRs.
 - Meta-changes to `project/process.md` or `project/rules.md` belong in a
-  separate PR from feature work.
+  separate PR from feature work. Exception: edits that only describe tooling
+  changed in the same PR (e.g. a new command in the Definition of done) stay
+  in that PR, so the docs are never wrong on `main`. Process improvements from
+  a phase 9 retrospective still go in their own PR.
 
 ## Dependencies
 
