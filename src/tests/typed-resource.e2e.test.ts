@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import {
   existsSync,
   mkdirSync,
@@ -76,11 +76,9 @@ describe.each([
     origCwd = process.cwd();
     process.chdir(tmp);
     symlinkSync(join(CLI_ROOT, "node_modules"), join(tmp, "node_modules"), "dir");
-    vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
     process.chdir(origCwd);
     rmSync(tmp, { recursive: true, force: true });
   });

@@ -329,7 +329,7 @@ describe("create-resource-helpers", () => {
         );
         // .add() is still documented as the untyped way to add messages.
         expect(content).toMatch(/add\(key, value, attributes, notes\)/);
-        expect(content).not.toContain("resource\n    .add(");
+        expect(content).not.toMatch(/\.add\('sampleKey/);
       }
     );
   });
