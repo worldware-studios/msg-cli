@@ -70,7 +70,7 @@ export default class Import extends Command {
     this.log(`Found ${filePaths.length} XLIFF file(s).`);
 
     if (flags.project) {
-      filePaths = filterXliffPathsByProject(filePaths, flags.project);
+      filePaths = filterXliffPathsByProject(filePaths, flags.project, xliffDir);
       if (filePaths.length === 0) {
         this.log(`No XLIFF files found for project '${flags.project}'. Nothing to import.`);
         return;
@@ -79,7 +79,7 @@ export default class Import extends Command {
     }
 
     if (flags.language) {
-      filePaths = filterXliffPathsByLocale(filePaths, flags.language);
+      filePaths = filterXliffPathsByLocale(filePaths, flags.language, xliffDir);
       if (filePaths.length === 0) {
         this.log(`No XLIFF files found for language '${flags.language}'. Nothing to import.`);
         return;
@@ -91,7 +91,7 @@ export default class Import extends Command {
     let errorCount = 0;
 
     for (const xliffPath of filePaths) {
-      const { project: projectName, locale } = parseXliffFilename(xliffPath);
+      const { project: projectName, locale } = parseXliffFilename(xliffPath, xliffDir);
       if (!locale) {
         this.warn(`Skipping monolingual file (no target locale): ${xliffPath}`);
         continue;
