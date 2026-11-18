@@ -114,31 +114,13 @@ export function parseXliffFilename(filePath: string, xliffDir: string): {
 } {
   const filename = basename(filePath);
   const match = filename.match(XLIFF_FILENAME_PATTERN);
-  const pathParts = xliffDirSegments(xliffDir, filePath);
-
-  let project: string;
-  let locale: string | undefined;
-
-  if (match) {
-    const [, proj, loc] = match;
-    project = proj ?? basename(filename, extname(filename));
-    locale = loc;
-  } else {
-    project = basename(filename, extname(filename));
-  }
-
+  // Without a pattern match (e.g. a bare ".xliff"), fall back to the file
+  // name itself; basename never yields "" here, so project is always set.
+  const project = match?.[1] ?? basename(filename, extname(filename));
   // If locale not in filename, check directories under the xliff root (e.g. xliff/project/zh/file.xliff)
-  if (!locale) {
-    for (const part of pathParts) {
-      if (LOCALE_PATTERN.test(part) && part.length >= 2) {
-        locale = part;
-        break;
-      }
-    }
-  }
-  if (!project && pathParts.length > 0) {
-    project = pathParts[0];
-  }
+  const locale =
+    match?.[2] ??
+    xliffDirSegments(xliffDir, filePath).find((part) => LOCALE_PATTERN.test(part));
 
   return { project, locale };
 }

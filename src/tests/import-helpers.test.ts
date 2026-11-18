@@ -217,12 +217,12 @@ describe("import-helpers", () => {
       expect(result.locale).toBeUndefined();
     });
 
-    test("extracts project from path when match gives empty project", () => {
+    test("extracts a project for a short filename", () => {
       const result = parseXliffFilename("/some/path/x.xliff", "/some/path");
       expect(result.project).toBeDefined();
     });
 
-    test("fallback extracts project from path when project empty (e.g. .xliff)", () => {
+    test("uses the file name as project for a bare .xliff", () => {
       const result = parseXliffFilename("/a/b/c/.xliff", "/a/b/c");
       expect(result.project).toBeTruthy();
       expect(result.project).not.toBe("");
