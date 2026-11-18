@@ -57,6 +57,15 @@ that phase pass.
   relative to `main` (compare `npm run coverage` on both) and the shortfall is
   tracked in an open issue. Say so when requesting approval rather than adding
   unrelated tests to the PR.
+- **Measure the `main` baseline on a clean checkout.** Run coverage for `main`
+  in a separate worktree (`git worktree add <dir> main`, symlink
+  `node_modules`, run `npm run coverage` there, then `git worktree remove`).
+  Do not use `git stash` or revert only the source: the branch's new tests
+  stay behind and skew the baseline.
+- **Resolve symlinks in expected paths.** When code under test derives a path
+  from `process.cwd()`, build the expected value from `realpathSync(...)`, not
+  from `tmpdir()` directly. On macOS `/var` is a symlink to `/private/var`, so
+  the two differ.
 - Do not weaken or delete tests to make a change pass unless the test is proven
   wrong; if so, explain why.
 - **Bugs found while writing tests:** if a test reveals a bug outside the
