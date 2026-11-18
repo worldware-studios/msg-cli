@@ -17,6 +17,7 @@ import {
   filterXliffPathsByProject,
   filterXliffPathsByLocale,
   parseXliffFilename,
+  xliffDirSegments,
   parseXliff20,
   extractResourceFromXliffFile,
   processXliffFile,
@@ -120,13 +121,13 @@ describe("import-helpers", () => {
   describe("filterXliffPathsByProject", () => {
     test("returns empty when no paths match", () => {
       const paths = ["/a/b/myapp.fr.xliff", "/a/b/other.de.xliff"];
-      const result = filterXliffPathsByProject(paths, "proj");
+      const result = filterXliffPathsByProject(paths, "proj", "/a/b");
       expect(result).toEqual([]);
     });
 
     test("filters by filename prefix only (no path match)", () => {
       const paths = ["/a/b/myapp.fr.xliff"];
-      const result = filterXliffPathsByProject(paths, "myapp");
+      const result = filterXliffPathsByProject(paths, "myapp", "/a/b");
       expect(result).toHaveLength(1);
     });
 
@@ -136,22 +137,28 @@ describe("import-helpers", () => {
         "/a/b/myapp.de.xliff",
         "/a/b/other.de.xliff",
       ];
-      const result = filterXliffPathsByProject(paths, "myapp");
+      const result = filterXliffPathsByProject(paths, "myapp", "/a/b");
       expect(result).toHaveLength(2);
     });
 
     test("filters by project as directory in path", () => {
       const paths = ["/xliff/myapp/fr/file.xliff", "/xliff/other/de/file.xliff"];
-      const result = filterXliffPathsByProject(paths, "myapp");
+      const result = filterXliffPathsByProject(paths, "myapp", "/xliff");
       expect(result).toHaveLength(1);
       expect(result[0]).toContain("myapp");
+    });
+
+    test("ignores a project-named directory above the xliff root (#49)", () => {
+      const paths = ["/srv/myapp/l10n/xliff/other.zh.xliff"];
+      const result = filterXliffPathsByProject(paths, "myapp", "/srv/myapp/l10n/xliff");
+      expect(result).toEqual([]);
     });
   });
 
   describe("filterXliffPathsByLocale", () => {
     test("returns empty when no paths match", () => {
       const paths = ["/a/b/test.zh.xliff"];
-      const result = filterXliffPathsByLocale(paths, "fr");
+      const result = filterXliffPathsByLocale(paths, "fr", "/a/b");
       expect(result).toEqual([]);
     });
 
@@ -161,65 +168,109 @@ describe("import-helpers", () => {
         "/a/b/test.fr.xliff",
         "/a/b/test.de.xliff",
       ];
-      const result = filterXliffPathsByLocale(paths, "fr");
+      const result = filterXliffPathsByLocale(paths, "fr", "/a/b");
       expect(result).toHaveLength(1);
       expect(result[0]).toContain(".fr.");
     });
 
     test("filters by locale as directory in path", () => {
       const paths = ["/xliff/test/zh/file.xliff", "/xliff/test/fr/file.xliff"];
-      const result = filterXliffPathsByLocale(paths, "zh");
+      const result = filterXliffPathsByLocale(paths, "zh", "/xliff");
       expect(result).toHaveLength(1);
       expect(result[0]).toContain("zh");
+    });
+
+    test("ignores a locale-named directory above the xliff root (#49)", () => {
+      const paths = ["/fr/l10n/xliff/test.xliff"];
+      const result = filterXliffPathsByLocale(paths, "fr", "/fr/l10n/xliff");
+      expect(result).toEqual([]);
     });
   });
 
   describe("parseXliffFilename", () => {
     test("extracts project and locale from project.locale.xliff", () => {
-      const result = parseXliffFilename("/a/b/test.zh.xliff");
+      const result = parseXliffFilename("/a/b/test.zh.xliff", "/a/b");
       expect(result.project).toBe("test");
       expect(result.locale).toBe("zh");
     });
 
     test("extracts project only from project.xliff", () => {
-      const result = parseXliffFilename("/a/b/test.xliff");
+      const result = parseXliffFilename("/a/b/test.xliff", "/a/b");
       expect(result.project).toBe("test");
       expect(result.locale).toBeUndefined();
     });
 
     test("handles .xlf extension", () => {
-      const result = parseXliffFilename("/a/b/app.fr.xlf");
+      const result = parseXliffFilename("/a/b/app.fr.xlf", "/a/b");
       expect(result.project).toBe("app");
       expect(result.locale).toBe("fr");
     });
 
     test("extracts locale from path when not in filename", () => {
-      const result = parseXliffFilename("/xliff/myapp/zh/file.xliff");
+      const result = parseXliffFilename("/xliff/myapp/zh/file.xliff", "/xliff");
       expect(result.locale).toBe("zh");
     });
 
     test("handles filename that does not match pattern", () => {
-      const result = parseXliffFilename("/a/b/file.xliff");
+      const result = parseXliffFilename("/a/b/file.xliff", "/a/b");
       expect(result.project).toBe("file");
       expect(result.locale).toBeUndefined();
     });
 
-    test("extracts project from path when match gives empty project", () => {
-      const result = parseXliffFilename("/some/path/x.xliff");
+    test("extracts a project for a short filename", () => {
+      const result = parseXliffFilename("/some/path/x.xliff", "/some/path");
       expect(result.project).toBeDefined();
     });
 
-    test("fallback extracts project from path when project empty (e.g. .xliff)", () => {
-      const result = parseXliffFilename("/a/b/c/.xliff");
+    test("uses the file name as project for a bare .xliff", () => {
+      const result = parseXliffFilename("/a/b/c/.xliff", "/a/b/c");
       expect(result.project).toBeTruthy();
       expect(result.project).not.toBe("");
     });
 
     test("extracts locale from path when filename is only extension (.xlf)", () => {
       // Filename ".xlf" does not match pattern; locale comes from path segment "zh"
-      const result = parseXliffFilename("/xliff/myproj/zh/.xlf");
+      const result = parseXliffFilename("/xliff/myproj/zh/.xlf", "/xliff");
       expect(result.locale).toBe("zh");
       expect(result.project).toBeTruthy();
+    });
+
+    test("does not treat a locale-shaped directory above the xliff root as the locale (#49)", () => {
+      const result = parseXliffFilename(
+        "/var/tmp/l10n/xliff/test.xliff",
+        "/var/tmp/l10n/xliff"
+      );
+      expect(result.project).toBe("test");
+      expect(result.locale).toBeUndefined();
+    });
+
+    test("extracts locale from a directory under the xliff root (#49)", () => {
+      const result = parseXliffFilename(
+        "/var/app/l10n/xliff/zh/test.xliff",
+        "/var/app/l10n/xliff"
+      );
+      expect(result.project).toBe("test");
+      expect(result.locale).toBe("zh");
+    });
+  });
+
+  describe("xliffDirSegments", () => {
+    test("returns the directories between the xliff root and the file", () => {
+      expect(
+        xliffDirSegments("/r/l10n/xliff", "/r/l10n/xliff/myapp/zh/file.xliff")
+      ).toEqual(["myapp", "zh"]);
+    });
+
+    test("returns no segments for a file directly in the xliff root", () => {
+      expect(xliffDirSegments("/var/l10n/xliff", "/var/l10n/xliff/test.xliff")).toEqual([]);
+    });
+
+    test("tolerates a trailing separator on the xliff root", () => {
+      expect(xliffDirSegments("/r/xliff/", "/r/xliff/zh/test.xliff")).toEqual(["zh"]);
+    });
+
+    test("returns no segments for a file outside the xliff root", () => {
+      expect(xliffDirSegments("/r/l10n/xliff", "/other/zh/test.xliff")).toEqual([]);
     });
   });
 

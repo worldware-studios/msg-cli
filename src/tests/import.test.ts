@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   writeFileSync,
   symlinkSync,
@@ -248,6 +249,65 @@ describe("Import command", () => {
       );
       const outputPath = join(translationsDir, "test", "zh", "Example.json");
       expect(existsSync(outputPath)).toBe(false);
+      logSpy.mockRestore();
+    });
+
+    test("skips monolingual file as monolingual under a locale-shaped parent directory (#49)", async () => {
+      // Real temp paths like /var/folders/... used to make "var" the locale.
+      // Nest the package under "var" ourselves so this holds on every OS.
+      mkdirSync(join(tmp, "var"), { recursive: true });
+      // Resolve symlinks (macOS /var -> /private/var) so the expected path
+      // matches what the command derives from process.cwd().
+      const root = realpathSync(join(tmp, "var"));
+      process.chdir(root);
+      const { xliffDir, translationsDir, projectsDir } =
+        setupPackageWithI18nAndL10n(root);
+      const monolingual = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en">
+  <file id="f1" original="Example.json">
+    <unit id="u1" name="hello">
+      <segment><source>Hello</source></segment>
+    </unit>
+  </file>
+</xliff>`;
+      const xliffPath = join(xliffDir, "test.xliff");
+      writeFileSync(xliffPath, monolingual);
+      copyFileSync(
+        join(FIXTURES_PROJECTS, "test.ts"),
+        join(projectsDir, "test.ts")
+      );
+      writeFileSync(join(root, "tsconfig.json"), "{}");
+      const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+      const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+
+      await ImportCmd.run([], CLI_ROOT);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        `Skipping monolingual file (no target locale): ${xliffPath}`
+      );
+      expect(existsSync(join(translationsDir, "test"))).toBe(false);
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+    });
+
+    test("imports locale from a directory under l10n/xliff (xliff/zh/test.xliff) (#49)", async () => {
+      const { xliffDir, translationsDir, projectsDir } =
+        setupPackageWithI18nAndL10n(tmp);
+      mkdirSync(join(xliffDir, "zh"), { recursive: true });
+      copyFileSync(
+        join(FIXTURES_XLIFF, "test.zh.xliff"),
+        join(xliffDir, "zh", "test.xliff")
+      );
+      copyFileSync(
+        join(FIXTURES_PROJECTS, "test.ts"),
+        join(projectsDir, "test.ts")
+      );
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+      const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+
+      await ImportCmd.run([], CLI_ROOT);
+
+      expect(existsSync(join(translationsDir, "test", "zh"))).toBe(true);
       logSpy.mockRestore();
     });
 

@@ -1,6 +1,6 @@
 import { MsgResource, type MsgResourceData } from "@worldware/msg";
 import { readdir, readFile, writeFile, mkdir } from "fs/promises";
-import { basename, dirname, extname, join } from "path";
+import { basename, dirname, extname, isAbsolute, join, relative, sep } from "path";
 import { pathToFileURL } from "url";
 import { XMLParser } from "fast-xml-parser";
 import { existsSync } from "fs";
@@ -38,40 +38,62 @@ export async function findXliffFilePaths(directory: string): Promise<string[]> {
 }
 
 /**
+ * Returns the directory names between the xliff root and an XLIFF file.
+ *
+ * Path-based project/locale detection must only look below the xliff root:
+ * directories above it (`/var`, `/tmp`, `src`, ...) belong to the machine,
+ * not to the msg layout, and many of them look like locale codes.
+ * @param xliffDir - Absolute path to the xliff directory (e.g. l10n/xliff)
+ * @param filePath - Absolute path to an XLIFF file
+ * @returns Directory segments under xliffDir, excluding the file name; empty
+ *   when the file is directly in xliffDir or outside it
+ */
+export function xliffDirSegments(xliffDir: string, filePath: string): string[] {
+  const rel = relative(xliffDir, filePath);
+  if (!rel || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    return [];
+  }
+  // Drop the file name; only directories carry project/locale hints.
+  return rel.split(/[/\\]/).slice(0, -1);
+}
+
+/**
  * Filters XLIFF file paths by project name.
- * Keeps paths where filename starts with projectName or projectName is a directory in the path.
+ * Keeps paths where filename starts with projectName or projectName is a directory under xliffDir.
  * @param filePaths - Array of absolute XLIFF file paths
  * @param projectName - Project name to filter by
+ * @param xliffDir - Absolute path to the xliff directory the paths were found in
  * @returns Filtered array of paths
  */
 export function filterXliffPathsByProject(
   filePaths: string[],
-  projectName: string
+  projectName: string,
+  xliffDir: string
 ): string[] {
   return filePaths.filter((p) => {
     const filename = basename(p);
     if (filename.startsWith(projectName)) return true;
-    const pathParts = p.split(/[/\\]/);
-    return pathParts.some((part) => part === projectName);
+    return xliffDirSegments(xliffDir, p).some((part) => part === projectName);
   });
 }
 
 /**
  * Filters XLIFF file paths by locale.
- * Keeps paths that have .[locale]. in the filename or locale as a directory in the path.
+ * Keeps paths that have .[locale]. in the filename or locale as a directory under xliffDir.
  * @param filePaths - Array of absolute XLIFF file paths
  * @param locale - Locale code to filter by
+ * @param xliffDir - Absolute path to the xliff directory the paths were found in
  * @returns Filtered array of paths
  */
 export function filterXliffPathsByLocale(
   filePaths: string[],
-  locale: string
+  locale: string,
+  xliffDir: string
 ): string[] {
   return filePaths.filter((p) => {
     const filename = basename(p);
     if (filename.includes(`.${locale}.`)) return true;
-    const pathParts = p.split(/[/\\]/);
-    return pathParts.some((part) => part === locale);
+    return xliffDirSegments(xliffDir, p).some((part) => part === locale);
   });
 }
 
@@ -80,46 +102,25 @@ const LOCALE_PATTERN = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$/;
 
 /**
  * Extracts project name and locale from an XLIFF file path.
- * Filename patterns: project.locale.xliff, project.xliff. Path segments may also indicate project/locale.
+ * Filename patterns: project.locale.xliff, project.xliff. Directories under
+ * xliffDir may also indicate project/locale (e.g. xliff/zh/project.xliff).
  * @param filePath - Absolute path to XLIFF file
+ * @param xliffDir - Absolute path to the xliff directory the file was found in
  * @returns Object with project and locale (locale may be undefined for monolingual)
  */
-export function parseXliffFilename(filePath: string): {
+export function parseXliffFilename(filePath: string, xliffDir: string): {
   project: string;
   locale?: string;
 } {
   const filename = basename(filePath);
   const match = filename.match(XLIFF_FILENAME_PATTERN);
-  const pathParts = filePath.split(/[/\\]/);
-
-  let project: string;
-  let locale: string | undefined;
-
-  if (match) {
-    const [, proj, loc] = match;
-    project = proj ?? basename(filename, extname(filename));
-    locale = loc;
-  } else {
-    project = basename(filename, extname(filename));
-  }
-
-  // If locale not in filename, check path segments (e.g. .../project/zh/file.xliff)
-  if (!locale) {
-    for (const part of pathParts) {
-      if (LOCALE_PATTERN.test(part) && part.length >= 2) {
-        locale = part;
-        break;
-      }
-    }
-  }
-  if (!project && pathParts.length >= 2) {
-    for (const part of pathParts) {
-      if (part && !XLIFF_EXTENSIONS.some((e) => part.endsWith(e))) {
-        project = part;
-        break;
-      }
-    }
-  }
+  // Without a pattern match (e.g. a bare ".xliff"), fall back to the file
+  // name itself; basename never yields "" here, so project is always set.
+  const project = match?.[1] ?? basename(filename, extname(filename));
+  // If locale not in filename, check directories under the xliff root (e.g. xliff/project/zh/file.xliff)
+  const locale =
+    match?.[2] ??
+    xliffDirSegments(xliffDir, filePath).find((part) => LOCALE_PATTERN.test(part));
 
   return { project, locale };
 }

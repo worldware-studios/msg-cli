@@ -124,11 +124,13 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 1. **Find xliff 2.0 files.** 
   - Recursively find all the xliff files in the `l10n/xliff` directory. Return an array of absolute paths.
 2. **Filter files by project name (optional).** 
-  - If `projectName` is passed to the `--project` flag, filter the array of paths to those where the filename starts with `projectName` or `projectName` is the name of a directory in the path.
+  - If `projectName` is passed to the `--project` flag, filter the array of paths to those where the filename starts with `projectName` or `projectName` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
 3. **Filter files by locale (optional).**
-  - If `locale` is passed to the `--language` flag, filter the array to those paths that have `.[locale].` in the filename or where `locale` is the name of a directory in the path. 
+  - If `locale` is passed to the `--language` flag, filter the array to those paths that have `.[locale].` in the filename or where `locale` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
 4. **Extract translations**
   - Iterate through the array of filtered file paths to process them.
+    - Determine the project and locale from the file name (`project.locale.xliff` or `project.xliff`). If the file name has no locale, use the first locale-shaped directory under `l10n/xliff` (e.g. `l10n/xliff/zh/project.xliff`); never use directories above `l10n/xliff`, since system paths such as `/var` or `/tmp` look like locale codes.
+    - If no locale is found, the file is monolingual: warn `Skipping monolingual file (no target locale): <path>` and continue to the next file path.
     - Use the file name (without the locale code) to dynamically import the `MsgProject` object from the file with the same name in the `i18n/projects` directory
     - Get the array of target locales from the project, which correspond to the keys in the project's `locales.targets` object.
     - Read and parse the xliff to an javascript object using `fast-xml-parser`

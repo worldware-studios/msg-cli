@@ -291,7 +291,9 @@ msg import -l zh
 **Behavior:**
 
 - Recursively finds all `.xliff` and `.xlf` files under `l10n/xliff`.
-- Project and target locale are taken from the filename (e.g. `myApp.zh.xliff`) or from path segments (e.g. `myApp/zh/messages.xliff`).
+- Project and target locale are taken from the filename (e.g. `myApp.zh.xliff`) or, when the filename has no locale, from a directory under `l10n/xliff` (e.g. `l10n/xliff/zh/myApp.xliff`). Directories above `l10n/xliff` are ignored, so a path like `/var/…` or `/tmp/…` is never read as a locale.
+- `--project` and `--language` match the filename or a directory under `l10n/xliff` the same way.
+- Skips (with a warning) files with no locale in the filename or under `l10n/xliff`, such as the monolingual `myApp.xliff` written by `msg export`.
 - Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.
 - Skips monolingual XLIFF files (no `trgLang`).
 - Skips files whose target locale is not in the project's `targetLocales`.
