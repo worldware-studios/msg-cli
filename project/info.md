@@ -17,7 +17,9 @@ process in `project/process.md`. Keep it accurate — the process depends on it.
 
 Check these before starting the process; every GitHub step depends on them.
 
-- **Node.js:** the version in `.nvmrc` (`nvm use`).
+- **Node.js:** the version in `.nvmrc` (`nvm use`). Non-interactive shells
+  (agents, scripts) may not load nvm, leaving `node`/`npx` off `PATH`; run
+  `. "$HOME/.nvm/nvm.sh" && nvm use` first.
 - **GitHub CLI:** `gh` installed and logged in (`gh auth login`) as an account
   that can create issues and push to the repository. Verify with
   `gh auth status`.
