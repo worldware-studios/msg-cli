@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   writeFileSync,
   symlinkSync,
@@ -254,8 +255,10 @@ describe("Import command", () => {
     test("skips monolingual file as monolingual under a locale-shaped parent directory (#49)", async () => {
       // Real temp paths like /var/folders/... used to make "var" the locale.
       // Nest the package under "var" ourselves so this holds on every OS.
-      const root = join(tmp, "var");
-      mkdirSync(root, { recursive: true });
+      mkdirSync(join(tmp, "var"), { recursive: true });
+      // Resolve symlinks (macOS /var -> /private/var) so the expected path
+      // matches what the command derives from process.cwd().
+      const root = realpathSync(join(tmp, "var"));
       process.chdir(root);
       const { xliffDir, translationsDir, projectsDir } =
         setupPackageWithI18nAndL10n(root);
