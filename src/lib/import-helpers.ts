@@ -1,6 +1,6 @@
 import { MsgResource, type MsgResourceData } from "@worldware/msg";
 import { readdir, readFile, writeFile, mkdir } from "fs/promises";
-import { basename, dirname, extname, join } from "path";
+import { basename, dirname, extname, isAbsolute, join, relative, sep } from "path";
 import { pathToFileURL } from "url";
 import { XMLParser } from "fast-xml-parser";
 import { existsSync } from "fs";
@@ -49,9 +49,12 @@ export async function findXliffFilePaths(directory: string): Promise<string[]> {
  *   when the file is directly in xliffDir or outside it
  */
 export function xliffDirSegments(xliffDir: string, filePath: string): string[] {
-  // Scaffold: still returns every segment of the absolute path (old behavior).
-  void xliffDir;
-  return filePath.split(/[/\\]/);
+  const rel = relative(xliffDir, filePath);
+  if (!rel || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    return [];
+  }
+  // Drop the file name; only directories carry project/locale hints.
+  return rel.split(/[/\\]/).slice(0, -1);
 }
 
 /**
@@ -124,7 +127,7 @@ export function parseXliffFilename(filePath: string, xliffDir: string): {
     project = basename(filename, extname(filename));
   }
 
-  // If locale not in filename, check path segments (e.g. .../project/zh/file.xliff)
+  // If locale not in filename, check directories under the xliff root (e.g. xliff/project/zh/file.xliff)
   if (!locale) {
     for (const part of pathParts) {
       if (LOCALE_PATTERN.test(part) && part.length >= 2) {
@@ -133,13 +136,8 @@ export function parseXliffFilename(filePath: string, xliffDir: string): {
       }
     }
   }
-  if (!project && pathParts.length >= 2) {
-    for (const part of pathParts) {
-      if (part && !XLIFF_EXTENSIONS.some((e) => part.endsWith(e))) {
-        project = part;
-        break;
-      }
-    }
+  if (!project && pathParts.length > 0) {
+    project = pathParts[0];
   }
 
   return { project, locale };
