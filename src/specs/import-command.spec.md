@@ -128,7 +128,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 1. **Find xliff 2.0 files.** 
   - Recursively find all the xliff files in the `l10n/xliff` directory. Return an array of absolute paths.
 2. **Filter files by project name (optional).** 
-  - If `projectName` is passed to the `--project` flag, filter the array of paths to those whose file name parses to exactly `projectName` (`projectName.xliff` or `projectName.locale.xliff`, in any directory). This is the project step 4 loads, so directories are not matched, and names that only share a prefix (`projectName` vs `projectNameX`) are not selected.
+  - If `projectName` is passed to the `--project` flag, filter the array of paths to those whose file name parses to exactly `projectName` (`projectName.xliff` or `projectName.locale.xliff`, in any directory). This is the project step 4 loads, so directories are not matched, and names that only share a prefix (`projectName` vs `projectNameX`) are not selected. Also keep paths whose whole file name without the extension is `projectName` (a dotted name such as `my.app.xliff` for `my.app`). Step 4 may resolve such a file to another project; then skip it without writing.
 3. **Filter files by locale (optional).**
   - If `locale` is passed to the `--language` flag, filter the array to those paths that have `.[locale].` in the filename or where `locale` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
 4. **Extract translations**
@@ -136,8 +136,8 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
     - Determine the project from the file name (`project.locale.xliff` or `project.xliff`), and note the file name locale, if any.
     - Read and parse the xliff to an javascript object using `fast-xml-parser`
     - If there is no `trgLang` attribute on the xliff object, the file is monolingual: warn `Skipping monolingual file (no target locale): <path>` and continue to the next file path.
-    - `trgLang` is the file's locale. If the file name has a locale that differs from `trgLang` (compared case-insensitively), warn `Skipping <path>: file name locale '<locale>' does not match trgLang '<trgLang>'` and continue to the next file path. Directory names are not checked against `trgLang`: a directory such as `l10n/xliff/app/` would look like a locale code.
-    - Use the file name (without the locale code) to dynamically import the `MsgProject` object from the file with the same name in the `i18n/projects` directory
+    - `trgLang` is the file's locale. If the file name has a locale that differs from `trgLang` (compared case-insensitively) and `i18n/projects` has a project named `<project>.<that locale>` (a dotted project name such as `my.app` for `my.app.xliff`), use that project and continue. Otherwise warn `Skipping <path>: file name locale '<locale>' does not match trgLang '<trgLang>'` and continue to the next file path. Directory names are not checked against `trgLang`: a directory such as `l10n/xliff/app/` would look like a locale code.
+    - Use the project (the file name without the locale code, or the dotted project chosen above) to dynamically import the `MsgProject` object from the file with the same name in the `i18n/projects` directory
     - Get the array of target locales from the project, which correspond to the keys in the project's `locales.targets` object.
     - If `trgLang` is not in the target locales array, the language is not supported. Continue to the next file path.
     - Iterate through the file objects in the parsed xliff object in order to create new translated `MsgResource` objects.
@@ -212,6 +212,11 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - Then:
 
 #### Edge Cases
+
+- _[Dotted project name]_
+  - Given: projects `my` and `my.app`, and a bilingual `l10n/xliff/my.app.xliff` with `trgLang="zh"`
+  - When: the user runs `import` (or `import --project my.app`)
+  - Then: translations are written to `l10n/translations/my.app/zh/`, and `import --project my` writes nothing for this file
 
 - _[--project with a shared prefix]_
   - Given: `l10n/xliff/app.zh.xliff` and `l10n/xliff/application.zh.xliff`

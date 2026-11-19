@@ -102,6 +102,8 @@ export default class Import extends Command {
           filenameLocale,
           (message) => this.warn(message)
         );
+        // --project kept both readings of a dotted name (#68); honor the resolved one.
+        if (result && flags.project && result.project !== flags.project) continue;
         if (result) {
           await writeTranslationFiles(translationsDir, result);
           for (const { title } of result.resources) {

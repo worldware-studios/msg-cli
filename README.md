@@ -311,7 +311,8 @@ msg import -l zh
 - The project is taken from the filename (`myApp.zh.xliff` or `myApp.xliff` → `myApp`).
 - The target locale is the file's `trgLang`, wherever the file sits under `l10n/xliff` (e.g. `l10n/xliff/zh/myApp.xliff`, `l10n/xliff/vendor/zh/myApp.xliff`, or `l10n/xliff/myApp.xliff`).
 - A locale in the filename must match `trgLang` (case-insensitive). Otherwise the file is skipped with a warning, e.g. `Skipping …/myApp.fr.xliff: file name locale 'fr' does not match trgLang 'de'`. Directory names are not checked against `trgLang`.
-- `--project` keeps files whose filename names exactly that project (`app.xliff`, `app.zh.xliff`, in any directory), the project import will load. `--project app` does not select `application.zh.xliff`, nor `l10n/xliff/app/zh/file.xliff` (project `file`).
+- **Dotted project names:** `my.app.xliff` can mean project `my.app`, or project `my` with locale `app`. When `app` isn't the file's `trgLang` and `i18n/projects` has a `my.app` project, the file imports as project `my.app` (locale from `trgLang`). Otherwise the mismatch warning above applies. `my.app.zh.xliff` is always project `my.app`, locale `zh`.
+- `--project` keeps files whose filename names exactly that project (`app.xliff`, `app.zh.xliff`, in any directory), the project import will load. `--project app` does not select `application.zh.xliff`, nor `l10n/xliff/app/zh/file.xliff` (project `file`). For a dotted name, either reading counts: `--project my.app` selects `my.app.xliff`. A file that then resolves to another project is not imported.
 - `--language` matches the filename or a directory under `l10n/xliff`. Directories above `l10n/xliff` are ignored, so a path like `/var/…` or `/tmp/…` never matches.
 - Skips (with a warning) monolingual files (no `trgLang`), such as the `myApp.xliff` written by `msg export`.
 - Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.

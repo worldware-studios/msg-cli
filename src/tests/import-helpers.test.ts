@@ -22,6 +22,7 @@ import {
   type XmlSpace,
   extractResourceFromXliffFile,
   processXliffFile,
+  projectFileExists,
   writeTranslationFiles,
   importMsgProject,
   type ImportResult,
@@ -142,6 +143,13 @@ describe("import-helpers", () => {
     test("drops projects that only share a prefix (#56)", () => {
       const paths = ["/x/app.zh.xliff", "/x/app.xliff", "/x/application.zh.xliff", "/x/apps.fr.xliff"];
       expect(filterXliffPathsByProject(paths, "app")).toEqual(["/x/app.zh.xliff", "/x/app.xliff"]);
+    });
+
+    test("keeps a file when either reading of a dotted name matches (#68)", () => {
+      const paths = ["/x/my.app.xliff", "/x/my.app.zh.xliff", "/x/my.xliff", "/x/my.zh.xliff"];
+      // my.app.xliff is project my.app, or project my with locale app.
+      expect(filterXliffPathsByProject(paths, "my.app")).toEqual(["/x/my.app.xliff", "/x/my.app.zh.xliff"]);
+      expect(filterXliffPathsByProject(paths, "my")).toEqual(["/x/my.app.xliff", "/x/my.xliff", "/x/my.zh.xliff"]);
     });
 
     test("matches by file name wherever the file sits, not by directory (#56)", () => {
@@ -1218,6 +1226,49 @@ one {{一}}
         "zh"
       );
       expect(result).toBeNull();
+    });
+
+    describe("dotted project names (#68)", () => {
+      const bilingualZh = () => readFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), "utf-8");
+      beforeEach(() => {
+        writeFileSync(join(tmp, "projects", "my.app.ts"), readFileSync(join(FIXTURES_PROJECTS, "test.ts"), "utf-8"));
+      });
+
+      test("projectFileExists finds .ts and .js project files only", () => {
+        writeFileSync(join(tmp, "projects", "other.js"), "export default {}");
+        expect(projectFileExists(join(tmp, "projects"), "my.app")).toBe(true);
+        expect(projectFileExists(join(tmp, "projects"), "other")).toBe(true);
+        expect(projectFileExists(join(tmp, "projects"), "my")).toBe(false);
+      });
+
+      test("imports a bilingual my.app.xliff as project my.app when its locale part is not trgLang", async () => {
+        const xliffPath = join(tmp, "xliff", "my.app.xliff");
+        writeFileSync(xliffPath, bilingualZh());
+        const warn = vi.fn();
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), "my", "app", warn);
+        expect(result?.project).toBe("my.app");
+        expect(result?.locale).toBe("zh");
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      test("still reads my.app.zh.xliff as project my.app, locale zh", async () => {
+        const xliffPath = join(tmp, "xliff", "my.app.zh.xliff");
+        writeFileSync(xliffPath, bilingualZh());
+        const { project, locale } = parseXliffFilename(xliffPath);
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), project, locale);
+        expect(result?.project).toBe("my.app");
+        expect(result?.locale).toBe("zh");
+      });
+
+      test("still warns on a mismatch when no dotted project exists", async () => {
+        const xliffPath = join(tmp, "xliff", "test.fr.xliff");
+        writeFileSync(xliffPath, bilingualZh());
+        const warn = vi.fn();
+        expect(await processXliffFile(xliffPath, join(tmp, "projects"), "test", "fr", warn)).toBeNull();
+        expect(warn).toHaveBeenCalledWith(
+          `Skipping ${xliffPath}: file name locale 'fr' does not match trgLang 'zh'`
+        );
+      });
     });
 
     describe("trgLang is the file's locale (#57)", () => {

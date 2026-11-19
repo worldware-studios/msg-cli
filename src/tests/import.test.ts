@@ -327,6 +327,42 @@ describe("Import command", () => {
       logSpy.mockRestore();
     });
 
+    describe("dotted project names (#68)", () => {
+      /** Projects my and my.app; a bilingual zh file named my.app.xliff. */
+      function setupDotted() {
+        const dirs = setupPackageWithI18nAndL10n(tmp);
+        for (const name of ["my", "my.app"]) {
+          copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(dirs.projectsDir, `${name}.ts`));
+        }
+        copyFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), join(dirs.xliffDir, "my.app.xliff"));
+        writeFileSync(join(tmp, "tsconfig.json"), "{}");
+        vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+        vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+        return dirs;
+      }
+      afterEach(() => vi.restoreAllMocks());
+
+      test("imports my.app.xliff as project my.app", async () => {
+        const { translationsDir } = setupDotted();
+        await ImportCmd.run([], CLI_ROOT);
+        expect(existsSync(join(translationsDir, "my.app", "zh", "Example.json"))).toBe(true);
+        expect(existsSync(join(translationsDir, "my"))).toBe(false);
+      });
+
+      test("--project my.app selects my.app.xliff", async () => {
+        const { translationsDir } = setupDotted();
+        await ImportCmd.run(["--project", "my.app"], CLI_ROOT);
+        expect(existsSync(join(translationsDir, "my.app", "zh", "Example.json"))).toBe(true);
+      });
+
+      test("--project my does not import my.app.xliff once it resolves to my.app", async () => {
+        const { translationsDir } = setupDotted();
+        await ImportCmd.run(["--project", "my"], CLI_ROOT);
+        expect(existsSync(join(translationsDir, "my.app"))).toBe(false);
+        expect(existsSync(join(translationsDir, "my"))).toBe(false);
+      });
+    });
+
     describe("trgLang is the file's locale (#57)", () => {
       /** Writes the zh fixture (trgLang="zh") at `relPath` under l10n/xliff and runs import. */
       async function importFixtureAt(relPath: string[]) {

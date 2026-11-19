@@ -60,8 +60,9 @@ export function xliffDirSegments(xliffDir: string, filePath: string): string[] {
 /**
  * Filters XLIFF file paths by project name.
  * Keeps paths whose file name parses to exactly that project (`project.xliff`,
- * `project.locale.xliff`), wherever they sit. This is the project import loads,
- * so directories are not matched: `xliff/app/zh/file.xliff` imports as `file`.
+ * `project.locale.xliff`), or whose whole file name stem is the project (a
+ * dotted name such as `my.app.xliff`), wherever they sit. Directories are not
+ * matched: `xliff/app/zh/file.xliff` imports as `file`.
  * @param filePaths - Array of absolute XLIFF file paths
  * @param projectName - Project name to filter by
  * @returns Filtered array of paths
@@ -70,7 +71,12 @@ export function filterXliffPathsByProject(
   filePaths: string[],
   projectName: string
 ): string[] {
-  return filePaths.filter((p) => parseXliffFilename(p).project === projectName);
+  return filePaths.filter((p) => {
+    // `x.y.xliff` may be project `x` (locale `y`) or project `x.y` (#68); keep
+    // either reading here; import drops a file that resolves to another project.
+    const stem = basename(p).replace(/\.(?:xliff|xlf)$/i, "");
+    return parseXliffFilename(p).project === projectName || stem === projectName;
+  });
 }
 
 /**
@@ -122,6 +128,9 @@ function isMsgProjectLike(value: unknown): value is { locales: { targetLocales: 
   return typeof loc === "object" && loc !== null && !Array.isArray(loc);
 }
 
+/** Project file extensions under i18n/projects, in lookup order. */
+const PROJECT_FILE_EXTENSIONS = [".ts", ".js"];
+
 /**
  * Dynamically imports MsgProject from i18n/projects by project name.
  * @param projectsDir - Absolute path to i18n/projects
@@ -134,8 +143,7 @@ export async function importMsgProject(
   projectName: string
 ): Promise<{ locales: { targetLocales: Record<string, string[]> } }> {
   const basePath = join(projectsDir, projectName);
-  const exts = [".ts", ".js"];
-  for (const ext of exts) {
+  for (const ext of PROJECT_FILE_EXTENSIONS) {
     const p = `${basePath}${ext}`;
     if (existsSync(p)) {
       const url = pathToFileURL(p).href;
@@ -148,6 +156,15 @@ export async function importMsgProject(
     }
   }
   throw new Error(`Project file not found: ${projectName}`);
+}
+
+/**
+ * Whether `i18n/projects` has a project file (`.ts` or `.js`) with this name.
+ * @param projectsDir - Absolute path to i18n/projects
+ * @param projectName - Project name (file name without extension)
+ */
+export function projectFileExists(projectsDir: string, projectName: string): boolean {
+  return PROJECT_FILE_EXTENSIONS.some((ext) => existsSync(join(projectsDir, `${projectName}${ext}`)));
 }
 
 const xmlParser = new XMLParser({
@@ -529,16 +546,23 @@ export async function processXliffFile(
     warn(`Skipping monolingual file (no target locale): ${xliffPath}`);
     return null;
   }
+  const locale = xliffTrgLang;
+  let resolvedProject = projectName;
   // BCP 47 tags are case-insensitive.
   if (filenameLocale && filenameLocale.toLowerCase() !== xliffTrgLang.toLowerCase()) {
-    warn(`Skipping ${xliffPath}: file name locale '${filenameLocale}' does not match trgLang '${xliffTrgLang}'`);
-    return null;
+    // `x.y.xliff` may name project `x.y` with no locale in the file name (#68).
+    const dottedProject = `${projectName}.${filenameLocale}`;
+    if (projectFileExists(projectsDir, dottedProject)) {
+      resolvedProject = dottedProject;
+    } else {
+      warn(`Skipping ${xliffPath}: file name locale '${filenameLocale}' does not match trgLang '${xliffTrgLang}'`);
+      return null;
+    }
   }
-  const locale = xliffTrgLang;
 
   let project;
   try {
-    project = await importMsgProject(projectsDir, projectName);
+    project = await importMsgProject(projectsDir, resolvedProject);
   } catch {
     return null; // Project not found, skip
   }
@@ -566,7 +590,7 @@ export async function processXliffFile(
   }
 
   if (resources.length === 0) return null;
-  return { project: projectName, locale, resources };
+  return { project: resolvedProject, locale, resources };
 }
 
 /**
