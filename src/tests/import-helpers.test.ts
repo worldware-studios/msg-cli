@@ -17,7 +17,6 @@ import {
   filterXliffPathsByProject,
   filterXliffPathsByLocale,
   parseXliffFilename,
-  xliffDirSegments,
   parseXliff20,
   type XmlSpace,
   extractResourceFromXliffFile,
@@ -261,26 +260,6 @@ describe("import-helpers", () => {
       const result = parseXliffFilename(path);
       expect(result.locale).toBeUndefined();
       expect(result.project).toBeTruthy();
-    });
-  });
-
-  describe("xliffDirSegments", () => {
-    test("returns the directories between the xliff root and the file", () => {
-      expect(
-        xliffDirSegments("/r/l10n/xliff", "/r/l10n/xliff/myapp/zh/file.xliff")
-      ).toEqual(["myapp", "zh"]);
-    });
-
-    test("returns no segments for a file directly in the xliff root", () => {
-      expect(xliffDirSegments("/var/l10n/xliff", "/var/l10n/xliff/test.xliff")).toEqual([]);
-    });
-
-    test("tolerates a trailing separator on the xliff root", () => {
-      expect(xliffDirSegments("/r/xliff/", "/r/xliff/zh/test.xliff")).toEqual(["zh"]);
-    });
-
-    test("returns no segments for a file outside the xliff root", () => {
-      expect(xliffDirSegments("/r/l10n/xliff", "/other/zh/test.xliff")).toEqual([]);
     });
   });
 
