@@ -1234,14 +1234,59 @@ one {{一}}
       expect(result).toBeNull();
     });
 
-    test("returns null when locale not in targetLocales", async () => {
-      const result = await processXliffFile(
-        join(tmp, "xliff", "test.zh.xliff"),
-        join(tmp, "projects"),
-        "test",
-        "ja"
-      );
-      expect(result).toBeNull();
+    describe("trgLang is the file's locale (#57)", () => {
+      const bilingual = (trgLang: string) =>
+        `<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="${trgLang}">` +
+        '<file id="f1" original="Example.json"><unit id="u1" name="hello"><segment><source>Hello</source><target>T</target></segment></unit></file></xliff>';
+
+      test("skips and warns when the file name locale disagrees with trgLang", async () => {
+        const xliffPath = join(tmp, "xliff", "test.fr.xliff");
+        writeFileSync(xliffPath, bilingual("zh"));
+        const warn = vi.fn();
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), "test", "fr", warn);
+        expect(result).toBeNull();
+        expect(warn).toHaveBeenCalledWith(
+          `Skipping ${xliffPath}: file name locale 'fr' does not match trgLang 'zh'`
+        );
+      });
+
+      test("matches the file name locale case-insensitively and uses trgLang as the locale", async () => {
+        const xliffPath = join(tmp, "xliff", "test.ZH.xliff");
+        writeFileSync(xliffPath, bilingual("zh"));
+        const warn = vi.fn();
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), "test", "ZH", warn);
+        expect(result?.locale).toBe("zh");
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      test("imports a bilingual file with no locale in its path", async () => {
+        const xliffPath = join(tmp, "xliff", "test.xliff");
+        writeFileSync(xliffPath, bilingual("zh"));
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), "test", undefined);
+        expect(result?.locale).toBe("zh");
+        expect(result?.resources).toHaveLength(1);
+      });
+
+      test("returns null without a warning when trgLang is not a target locale", async () => {
+        const xliffPath = join(tmp, "xliff", "test.xliff");
+        writeFileSync(xliffPath, bilingual("ja"));
+        const warn = vi.fn();
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), "test", undefined, warn);
+        expect(result).toBeNull();
+        expect(warn).not.toHaveBeenCalled();
+      });
+
+      test("warns about a monolingual file before looking up the project", async () => {
+        const xliffPath = join(tmp, "xliff", "mono.xliff");
+        writeFileSync(
+          xliffPath,
+          '<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en"></xliff>'
+        );
+        const warn = vi.fn();
+        const result = await processXliffFile(xliffPath, join(tmp, "projects"), "nonexistent", undefined, warn);
+        expect(result).toBeNull();
+        expect(warn).toHaveBeenCalledWith(`Skipping monolingual file (no target locale): ${xliffPath}`);
+      });
     });
 
     test("throws on malformed XLIFF", async () => {

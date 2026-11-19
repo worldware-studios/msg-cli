@@ -311,6 +311,44 @@ describe("Import command", () => {
       logSpy.mockRestore();
     });
 
+    describe("trgLang is the file's locale (#57)", () => {
+      /** Writes the zh fixture (trgLang="zh") at `relPath` under l10n/xliff and runs import. */
+      async function importFixtureAt(relPath: string[]) {
+        const { xliffDir, translationsDir, projectsDir } = setupPackageWithI18nAndL10n(tmp);
+        const xliffPath = join(xliffDir, ...relPath);
+        mkdirSync(dirname(xliffPath), { recursive: true });
+        copyFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), xliffPath);
+        copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(projectsDir, "test.ts"));
+        writeFileSync(join(tmp, "tsconfig.json"), "{}");
+        const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+        const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+        await ImportCmd.run([], CLI_ROOT);
+        const warnings = warnSpy.mock.calls.map((c) => c[0]);
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+        // The command derives paths from process.cwd(), which resolves symlinks (macOS /var).
+        return { xliffPath: realpathSync(xliffPath), translationsDir, warnings };
+      }
+
+      test("skips and warns when the file name locale disagrees with trgLang", async () => {
+        const { xliffPath, translationsDir, warnings } = await importFixtureAt(["test.en.xliff"]);
+        expect(warnings).toContain(`Skipping ${xliffPath}: file name locale 'en' does not match trgLang 'zh'`);
+        expect(existsSync(join(translationsDir, "test"))).toBe(false);
+      });
+
+      test("imports a bilingual file with no locale in its path, using trgLang", async () => {
+        const { translationsDir, warnings } = await importFixtureAt(["test.xliff"]);
+        expect(warnings).toEqual([]);
+        expect(existsSync(join(translationsDir, "test", "zh"))).toBe(true);
+      });
+
+      test("uses trgLang, not a short directory name, as the locale (xliff/app/zh/test.xliff)", async () => {
+        const { translationsDir } = await importFixtureAt(["app", "zh", "test.xliff"]);
+        expect(existsSync(join(translationsDir, "test", "zh"))).toBe(true);
+        expect(existsSync(join(translationsDir, "test", "app"))).toBe(false);
+      });
+    });
+
     test("skips XLIFF when locale not in project targetLocales (processXliffFile returns null)", async () => {
       const { xliffDir, translationsDir, projectsDir } =
         setupPackageWithI18nAndL10n(tmp);

@@ -103,3 +103,68 @@ describe("import locale from l10n/xliff directories end to end (#49)", () => {
     expect(readFrenchMessages()).toMatchObject({ sampleKey: "Valeur d’exemple." });
   });
 });
+
+/**
+ * #57: a file's trgLang, not its path, is its locale. A translator's tool
+ * returns French (trgLang="fr") under a short directory that looks like a
+ * locale code, and the same French file mislabeled with an "en" file name.
+ */
+describe("import uses trgLang as the locale end to end (#57)", () => {
+  let tmp: string;
+  let root: string;
+  let origCwd: string;
+  let french: string;
+
+  beforeEach(async () => {
+    tmp = mkdtempSync(join(tmpdir(), "msg-trglang-e2e-"));
+    // Resolve symlinks (macOS /var -> /private/var) to match process.cwd().
+    root = realpathSync(tmp);
+    origCwd = process.cwd();
+    process.chdir(root);
+    symlinkSync(join(CLI_ROOT, "node_modules"), join(root, "node_modules"), "dir");
+
+    setupInitializedApp(root, false);
+    vi.spyOn(CreateProject.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(CreateResource.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(Export.prototype, "log").mockImplementation(() => {});
+    await CreateProject.run(["Main", "en", "fr"], CLI_ROOT);
+    await CreateResource.run(["Main", "Messages"], CLI_ROOT);
+    await Export.run([], CLI_ROOT);
+    french = translateXliff(readFileSync(join(root, "l10n", "xliff", "Main.xliff"), "utf-8"), {
+      "Sample value.": "Valeur d’exemple.",
+    });
+    vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.chdir(origCwd);
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  const translationsFor = (locale: string) => join(root, "l10n", "translations", "Main", locale);
+
+  test("xliff/app/fr/Main.xliff imports as fr, not app", async () => {
+    mkdirSync(join(root, "l10n", "xliff", "app", "fr"), { recursive: true });
+    writeFileSync(join(root, "l10n", "xliff", "app", "fr", "Main.xliff"), french);
+
+    await ImportCmd.run([], CLI_ROOT);
+
+    expect(existsSync(join(translationsFor("fr"), "Messages.json"))).toBe(true);
+    expect(existsSync(translationsFor("app"))).toBe(false);
+  });
+
+  test("Main.en.xliff containing French is skipped with a warning", async () => {
+    const mislabeled = join(root, "l10n", "xliff", "Main.en.xliff");
+    writeFileSync(mislabeled, french);
+    const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+
+    await ImportCmd.run([], CLI_ROOT);
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      `Skipping ${mislabeled}: file name locale 'en' does not match trgLang 'fr'`
+    );
+    expect(existsSync(translationsFor("en"))).toBe(false);
+    expect(existsSync(translationsFor("fr"))).toBe(false);
+  });
+});

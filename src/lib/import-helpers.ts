@@ -106,11 +106,14 @@ const LOCALE_PATTERN = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$/;
  * xliffDir may also indicate project/locale (e.g. xliff/zh/project.xliff).
  * @param filePath - Absolute path to XLIFF file
  * @param xliffDir - Absolute path to the xliff directory the file was found in
- * @returns Object with project and locale (locale may be undefined for monolingual)
+ * @returns Object with project, a path-based locale hint, and `filenameLocale`
+ *   (the locale from the file name alone, `project.locale.xliff`). Import takes
+ *   the locale from the file's `trgLang` and checks only `filenameLocale` against it.
  */
 export function parseXliffFilename(filePath: string, xliffDir: string): {
   project: string;
   locale?: string;
+  filenameLocale?: string;
 } {
   const filename = basename(filePath);
   const match = filename.match(XLIFF_FILENAME_PATTERN);
@@ -122,7 +125,7 @@ export function parseXliffFilename(filePath: string, xliffDir: string): {
     match?.[2] ??
     xliffDirSegments(xliffDir, filePath).find((part) => LOCALE_PATTERN.test(part));
 
-  return { project, locale };
+  return { project, locale, filenameLocale: match?.[2] };
 }
 
 /** Duck-type check for MsgProject. */
@@ -514,15 +517,38 @@ export interface ImportResult {
  * @param xliffPath - Absolute path to XLIFF file
  * @param projectsDir - Absolute path to i18n/projects
  * @param projectName - Project name (from filename, for loading MsgProject)
- * @param locale - Target locale (from filename)
- * @returns ImportResult or null if file should be skipped
+ * @param filenameLocale - Locale from the file name, if any; must match the file's `trgLang`
+ * @param warn - Receives a message for each skip the user should hear about
+ *   (monolingual file, file name locale that disagrees with `trgLang`)
+ * @returns ImportResult (locale = the file's `trgLang`) or null if the file should be skipped
  */
 export async function processXliffFile(
   xliffPath: string,
   projectsDir: string,
   projectName: string,
-  locale: string
+  filenameLocale: string | undefined,
+  warn: (message: string) => void = () => {}
 ): Promise<ImportResult | null> {
+  // Read the file first: trgLang, not the path, decides the locale (and whether
+  // the file is monolingual), and the user should hear about it even when no
+  // project matches.
+  const xml = await readFile(xliffPath, "utf-8");
+  const parsed = parseXliff20(xml);
+  const xliffRoot = (parsed as Record<string, unknown>).xliff as Record<string, unknown> | undefined;
+  if (!xliffRoot) return null;
+
+  const xliffTrgLang = xliffRoot["@_trgLang"] as string | undefined;
+  if (!xliffTrgLang) {
+    warn(`Skipping monolingual file (no target locale): ${xliffPath}`);
+    return null;
+  }
+  // BCP 47 tags are case-insensitive.
+  if (filenameLocale && filenameLocale.toLowerCase() !== xliffTrgLang.toLowerCase()) {
+    warn(`Skipping ${xliffPath}: file name locale '${filenameLocale}' does not match trgLang '${xliffTrgLang}'`);
+    return null;
+  }
+  const locale = xliffTrgLang;
+
   let project;
   try {
     project = await importMsgProject(projectsDir, projectName);
@@ -532,14 +558,6 @@ export async function processXliffFile(
 
   const targetLocales = Object.keys(project.locales.targetLocales);
   if (!targetLocales.includes(locale)) return null;
-
-  const xml = await readFile(xliffPath, "utf-8");
-  const parsed = parseXliff20(xml);
-  const xliffRoot = (parsed as Record<string, unknown>).xliff as Record<string, unknown> | undefined;
-  if (!xliffRoot) return null;
-
-  const xliffTrgLang = xliffRoot["@_trgLang"] as string | undefined;
-  if (!xliffTrgLang) return null; // Monolingual
 
   const fileEls = xliffRoot.file;
   const files = Array.isArray(fileEls) ? fileEls : fileEls ? [fileEls] : [];

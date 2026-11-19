@@ -91,18 +91,16 @@ export default class Import extends Command {
     let errorCount = 0;
 
     for (const xliffPath of filePaths) {
-      const { project: projectName, locale } = parseXliffFilename(xliffPath, xliffDir);
-      if (!locale) {
-        this.warn(`Skipping monolingual file (no target locale): ${xliffPath}`);
-        continue;
-      }
+      // The file's trgLang is its locale; a locale in the file name must agree with it.
+      const { project: projectName, filenameLocale } = parseXliffFilename(xliffPath, xliffDir);
 
       try {
         const result = await processXliffFile(
           xliffPath,
           projectsDir,
           projectName,
-          locale
+          filenameLocale,
+          (message) => this.warn(message)
         );
         if (result) {
           await writeTranslationFiles(translationsDir, result);

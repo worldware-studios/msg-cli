@@ -308,14 +308,15 @@ msg import -l zh
 **Behavior:**
 
 - Recursively finds all `.xliff` and `.xlf` files under `l10n/xliff`.
-- Project and target locale are taken from the filename (e.g. `myApp.zh.xliff`) or, when the filename has no locale, from a directory under `l10n/xliff` (e.g. `l10n/xliff/zh/myApp.xliff`). Directories above `l10n/xliff` are ignored, so a path like `/var/…` or `/tmp/…` is never read as a locale.
-- `--project` and `--language` match the filename or a directory under `l10n/xliff` the same way.
-- Skips (with a warning) files with no locale in the filename or under `l10n/xliff`, such as the monolingual `myApp.xliff` written by `msg export`.
+- The project is taken from the filename (`myApp.zh.xliff` or `myApp.xliff` → `myApp`).
+- The target locale is the file's `trgLang`, wherever the file sits under `l10n/xliff` (e.g. `l10n/xliff/zh/myApp.xliff`, `l10n/xliff/vendor/zh/myApp.xliff`, or `l10n/xliff/myApp.xliff`).
+- A locale in the filename must match `trgLang` (case-insensitive). Otherwise the file is skipped with a warning, e.g. `Skipping …/myApp.fr.xliff: file name locale 'fr' does not match trgLang 'de'`. Directory names are not checked against `trgLang`.
+- `--project` and `--language` match the filename or a directory under `l10n/xliff`. Directories above `l10n/xliff` are ignored, so a path like `/var/…` or `/tmp/…` never matches.
+- Skips (with a warning) monolingual files (no `trgLang`), such as the `myApp.xliff` written by `msg export`.
 - Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.
-- Skips monolingual XLIFF files (no `trgLang`).
-- Skips files whose target locale is not in the project's `targetLocales`.
+- Skips files whose `trgLang` is not in the project's `targetLocales`.
 - Skips files when the matching project file does not exist or cannot be loaded.
-- Writes JSON to `l10n/translations/<project>/<locale>/<title>.json`.
+- Writes JSON to `l10n/translations/<project>/<trgLang>/<title>.json`.
 - Preserves existing translation files for other projects or locales when filtering.
 - Errors on malformed XLIFF and logs each step.
 
