@@ -311,7 +311,8 @@ msg import -l zh
 - The project is taken from the filename (`myApp.zh.xliff` or `myApp.xliff` → `myApp`).
 - The target locale is the file's `trgLang`, wherever the file sits under `l10n/xliff` (e.g. `l10n/xliff/zh/myApp.xliff`, `l10n/xliff/vendor/zh/myApp.xliff`, or `l10n/xliff/myApp.xliff`).
 - A locale in the filename must match `trgLang` (case-insensitive). Otherwise the file is skipped with a warning, e.g. `Skipping …/myApp.fr.xliff: file name locale 'fr' does not match trgLang 'de'`. Directory names are not checked against `trgLang`.
-- `--project` and `--language` match the filename or a directory under `l10n/xliff`. Directories above `l10n/xliff` are ignored, so a path like `/var/…` or `/tmp/…` never matches.
+- `--project` keeps files whose filename names exactly that project (`app.xliff`, `app.zh.xliff`, in any directory), the project import will load. `--project app` does not select `application.zh.xliff`, nor `l10n/xliff/app/zh/file.xliff` (project `file`).
+- `--language` matches the filename or a directory under `l10n/xliff`. Directories above `l10n/xliff` are ignored, so a path like `/var/…` or `/tmp/…` never matches.
 - Skips (with a warning) monolingual files (no `trgLang`), such as the `myApp.xliff` written by `msg export`.
 - Dynamically imports `MsgProject` from `i18n/projects` to validate target locales.
 - Skips files whose `trgLang` is not in the project's `targetLocales`.
