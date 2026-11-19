@@ -264,6 +264,14 @@ Import translations from bilingual XLIFF 2.0 or 2.2 files in `l10n/xliff` to JSO
 - Unit `type` of `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare `NONE` / `MF1` / `MF2`) is restored as the message `attributes.format`.
 - Units with `pgs:switch` are reassembled from segment bodies (`<target>` when present): **MF1** → nested ICU MessageFormat 1; otherwise (including missing type) → MessageFormat 2 `.match`. Single-segment units are unchanged.
 
+**Inline elements on import:** segment text is rebuilt in document order, keeping the text and spacing around inline elements (e.g. `Hello <pc id="1">bold</pc>!` → `Hello bold!`).
+
+- `<pc>`, `<mrk>`, and unrecognized elements contribute their content (nested elements included).
+- `<ph>`, `<sc>`, `<ec>` contribute their `equiv` attribute, else `disp`, else nothing (e.g. `<ph id="1" equiv="{name}"/>` → `{name}`).
+- `<cp hex="…"/>` becomes that character, or U+FFFD if the hex value is not a valid code point.
+- `<sm>` and `<em>` contribute nothing.
+- CDATA text is kept in place.
+
 **Whitespace on import:**
 
 - `xml:space` is inherited per XLIFF 2: `<xliff>` → `<file>` → `<group>` → `<unit>` → `<source>`/`<target>`, defaulting to `default`. Invalid values are ignored.
