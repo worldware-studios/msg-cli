@@ -247,6 +247,7 @@ msg export -p myApp
 - **Message notes** — Emitted as unit-level `<notes>` with category (e.g. `description`, `context`, `parameters`).
 - **Message attributes** — `dnt` → unit `translate="no"`; message `dir` is serialized as the unit’s `srcDir` unless it is `"auto"`.
 - **Message format** — Resolved `format` (`NONE` / `MF1` / `MF2`, including inheritance from resource/project) is written as the unit `type` attribute using the XLIFF custom form `msg:NONE`, `msg:MF1`, or `msg:MF2`.
+- **Significant whitespace** — A unit gets `xml:space="preserve"` when its source text has leading or trailing whitespace, a tab or line break, or a run of spaces. This tells translation tools, and `msg import`, to keep whitespace exactly (e.g. `"Total: "`). For PGS units the case bodies are checked, not the multi-line MF2 message. Carriage returns are written as `&#13;`, because XML parsing would otherwise turn them into line feeds.
 
 **Plural, gender, select (PGS):** Classifiable plural/select messages are exported to the [XLIFF 2.2 Plural, Gender, and Select module](https://docs.oasis-open.org/xliff/xliff-core/v2.2/xliff-extended-v2.2-part2.html) (`xmlns:pgs="urn:oasis:names:tc:xliff:pgs:1.0"`): `pgs:switch` on the `<unit>`, and one `<segment>` per variant with `pgs:case`.
 
@@ -262,6 +263,14 @@ Import translations from bilingual XLIFF 2.0 or 2.2 files in `l10n/xliff` to JSO
 
 - Unit `type` of `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare `NONE` / `MF1` / `MF2`) is restored as the message `attributes.format`.
 - Units with `pgs:switch` are reassembled from segment bodies (`<target>` when present): **MF1** → nested ICU MessageFormat 1; otherwise (including missing type) → MessageFormat 2 `.match`. Single-segment units are unchanged.
+
+**Whitespace on import:**
+
+- `xml:space` is inherited per XLIFF 2: `<xliff>` → `<file>` → `<group>` → `<unit>` → `<source>`/`<target>`, defaulting to `default`. Invalid values are ignored.
+- `preserve` — segment text is kept exactly, including leading/trailing whitespace and whitespace-only values.
+- `default` — leading and trailing XML whitespace (space, tab, CR, LF) is trimmed; non-breaking and other Unicode spaces are kept.
+- Character references such as `&#13;` and `&#160;` are decoded.
+- Notes are not affected: import writes translation files without notes.
 
 ```bash
 msg import [-p <projectName>] [-l <locale>]
