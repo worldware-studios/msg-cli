@@ -3,13 +3,14 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import * as createResourceHelpers from "../lib/create-resource-helpers.js";
 import CreateProject from "../commands/create/project.js";
 import CreateResource from "../commands/create/resource.js";
@@ -89,6 +90,9 @@ describe("CreateResource command", () => {
   });
 
   afterEach(() => {
+    // Restore here, not at the end of each test: a test that throws would
+    // otherwise leak its mocks into the next one.
+    vi.restoreAllMocks();
     process.chdir(origCwd);
     rmSync(tmp, { recursive: true, force: true });
   });
@@ -108,6 +112,17 @@ describe("CreateResource command", () => {
       expect(content).toContain("export const resource = MsgResource.create");
       expect(content).toContain("export async function getMessages()");
       expect(content).not.toContain("export default");
+    });
+
+    test("re-imports the generated file to verify it, and keeps it (#50)", async () => {
+      setupValidProject(tmp, { type: "module" });
+      const importSpy = vi.spyOn(createResourceHelpers, "dynamicImportFromUrl");
+      await CreateResource.run(["myProject", "messages"], CLI_ROOT);
+
+      // The command derives paths from process.cwd(), which resolves symlinks (macOS /var).
+      const outPath = join(realpathSync(tmp), "i18n", "resources", "messages.msg.js");
+      expect(importSpy).toHaveBeenCalledWith(pathToFileURL(outPath).href);
+      expect(existsSync(outPath)).toBe(true);
     });
 
     test("creates resource file in CommonJS project", async () => {
@@ -434,18 +449,10 @@ describe("CreateResource command", () => {
         }
       );
       const outPath = join(tmp, "i18n", "resources", "messages.msg.js");
-      if (process.env.VITEST === "true") {
-        // In Vitest we skip post-write verification, so file is created and left on disk
-        await CreateResource.run(["myProject", "messages"], CLI_ROOT);
-        expect(existsSync(outPath)).toBe(true);
-        expect(readFileSync(outPath, "utf-8")).toBe("invalid syntax {{{");
-      } else {
-        await expect(CreateResource.run(["myProject", "messages"], CLI_ROOT)).rejects.toThrow(
-          /invalid or not importable|invalid|SyntaxError/
-        );
-        expect(existsSync(outPath)).toBe(false);
-      }
-      vi.restoreAllMocks();
+      await expect(CreateResource.run(["myProject", "messages"], CLI_ROOT)).rejects.toThrow(
+        /Generated file is invalid or not importable/
+      );
+      expect(existsSync(outPath)).toBe(false);
     });
   });
 
