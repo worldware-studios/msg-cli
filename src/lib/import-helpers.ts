@@ -517,7 +517,7 @@ export interface ImportResult {
  * @param xliffPath - Absolute path to XLIFF file
  * @param projectsDir - Absolute path to i18n/projects
  * @param projectName - Project name (from filename, for loading MsgProject)
- * @param pathLocale - Locale from the file name, if any; must match the file's `trgLang`
+ * @param filenameLocale - Locale from the file name, if any; must match the file's `trgLang`
  * @param warn - Receives a message for each skip the user should hear about
  *   (monolingual file, file name locale that disagrees with `trgLang`)
  * @returns ImportResult (locale = the file's `trgLang`) or null if the file should be skipped
@@ -526,7 +526,7 @@ export async function processXliffFile(
   xliffPath: string,
   projectsDir: string,
   projectName: string,
-  pathLocale: string | undefined,
+  filenameLocale: string | undefined,
   warn: (message: string) => void = () => {}
 ): Promise<ImportResult | null> {
   // Read the file first: trgLang, not the path, decides the locale (and whether
@@ -543,8 +543,8 @@ export async function processXliffFile(
     return null;
   }
   // BCP 47 tags are case-insensitive.
-  if (pathLocale && pathLocale.toLowerCase() !== xliffTrgLang.toLowerCase()) {
-    warn(`Skipping ${xliffPath}: file name locale '${pathLocale}' does not match trgLang '${xliffTrgLang}'`);
+  if (filenameLocale && filenameLocale.toLowerCase() !== xliffTrgLang.toLowerCase()) {
+    warn(`Skipping ${xliffPath}: file name locale '${filenameLocale}' does not match trgLang '${xliffTrgLang}'`);
     return null;
   }
   const locale = xliffTrgLang;
