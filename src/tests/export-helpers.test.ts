@@ -740,6 +740,11 @@ one {{One item}}
         );
       });
 
+      test("escapes CR as a character reference so XML parsing cannot turn it into LF", () => {
+        const xliff = xliffFor(createTestResource("R", "p", [{ key: "k", value: "a\r\nb" }]));
+        expect(xliff).toContain("<source>a&#13;\nb</source>");
+      });
+
       test("checks PGS case bodies, not the multi-line MF2 message", () => {
         const plain = ".input {$n :number}\n.match $n\none {{{$n} item}}\n* {{{$n} items}}";
         const spaced = ".input {$n :number}\n.match $n\none {{{$n} item }}\n* {{{$n} items}}";

@@ -172,7 +172,9 @@ function escapeXml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replace(/'/g, "&apos;")
+    // XML parsers normalize a literal CR (and CRLF) to LF; a reference keeps it.
+    .replace(/\r/g, "&#13;");
 }
 
 /**

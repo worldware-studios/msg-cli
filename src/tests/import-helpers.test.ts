@@ -803,6 +803,12 @@ one {{一}}
         expect(importTarget('a<cp hex="110000"/><cp hex="zz"/><cp/>b')).toBe("a\uFFFD\uFFFD\uFFFDb");
       });
 
+      test("decodes numeric character references in text and attributes (#62)", () => {
+        expect(importTarget('a&#160;b&#x263A;&#13;c <ph id="1" equiv="&#123;n&#x7D;"/> &amp;#13;')).toBe(
+          "a\u00A0b\u263A\rc {n} &#13;"
+        );
+      });
+
       test("keeps CDATA text in place", () => {
         expect(importTarget("a <![CDATA[<b> & c]]> d")).toBe("a <b> & c d");
       });

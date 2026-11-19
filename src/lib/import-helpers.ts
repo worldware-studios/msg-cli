@@ -176,6 +176,9 @@ const inlineContentParser = new XMLParser({
   preserveOrder: true,
   trimValues: false,
   parseTagValue: false,
+  // Decode numeric character references (&#13;, &#xA0;), which fast-xml-parser leaves
+  // as literal text by default. Export writes CR as &#13; so it survives parsing.
+  htmlEntities: true,
 });
 
 /** A node from a `preserveOrder` parse: one tag key (or `#text`) plus optional `:@` attributes. */
