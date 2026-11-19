@@ -1,6 +1,6 @@
 import { MsgResource, type MsgResourceData } from "@worldware/msg";
 import { readdir, readFile, writeFile, mkdir } from "fs/promises";
-import { basename, dirname, extname, isAbsolute, join, relative, sep } from "path";
+import { basename, dirname, extname, join } from "path";
 import { pathToFileURL } from "url";
 import { XMLParser } from "fast-xml-parser";
 import { existsSync } from "fs";
@@ -38,26 +38,6 @@ export async function findXliffFilePaths(directory: string): Promise<string[]> {
 }
 
 /**
- * Returns the directory names between the xliff root and an XLIFF file.
- *
- * Path-based project/locale detection must only look below the xliff root:
- * directories above it (`/var`, `/tmp`, `src`, ...) belong to the machine,
- * not to the msg layout, and many of them look like locale codes.
- * @param xliffDir - Absolute path to the xliff directory (e.g. l10n/xliff)
- * @param filePath - Absolute path to an XLIFF file
- * @returns Directory segments under xliffDir, excluding the file name; empty
- *   when the file is directly in xliffDir or outside it
- */
-export function xliffDirSegments(xliffDir: string, filePath: string): string[] {
-  const rel = relative(xliffDir, filePath);
-  if (!rel || rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
-    return [];
-  }
-  // Drop the file name; only directories carry project/locale hints.
-  return rel.split(/[/\\]/).slice(0, -1);
-}
-
-/**
  * Filters XLIFF file paths by project name.
  * Keeps paths whose file name parses to exactly that project (`project.xliff`,
  * `project.locale.xliff`), or whose whole file name stem is the project (a
@@ -91,9 +71,23 @@ export function filterXliffPathsByProject(
  */
 export async function filterXliffPathsByLocale(
   filePaths: string[],
-  _locale: string
+  locale: string
 ): Promise<string[]> {
-  return filePaths;
+  const wanted = locale.toLowerCase();
+  const keep = await Promise.all(
+    filePaths.map(async (p) => {
+      let parsed: object;
+      try {
+        parsed = parseXliff20(await readFile(p, "utf-8"));
+      } catch {
+        return true; // Let the import loop report the malformed file.
+      }
+      const root = (parsed as Record<string, unknown>).xliff as Record<string, unknown> | undefined;
+      const trgLang = root?.["@_trgLang"];
+      return typeof trgLang === "string" && trgLang.toLowerCase() === wanted;
+    })
+  );
+  return filePaths.filter((_, i) => keep[i]);
 }
 
 /**
