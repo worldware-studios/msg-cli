@@ -168,3 +168,57 @@ describe("import uses trgLang as the locale end to end (#57)", () => {
     expect(existsSync(translationsFor("fr"))).toBe(false);
   });
 });
+
+/**
+ * #68: a project whose name contains a dot. Export writes my.app.xliff; a
+ * translator's tool fills it in place (trgLang="fr"). Import must read it as
+ * project my.app, not as project "my" with locale "app".
+ */
+describe("dotted project name end to end (#68)", () => {
+  let tmp: string;
+  let root: string;
+  let origCwd: string;
+
+  beforeEach(async () => {
+    tmp = mkdtempSync(join(tmpdir(), "msg-dotted-e2e-"));
+    // Resolve symlinks (macOS /var -> /private/var) to match process.cwd().
+    root = realpathSync(tmp);
+    origCwd = process.cwd();
+    process.chdir(root);
+    symlinkSync(join(CLI_ROOT, "node_modules"), join(root, "node_modules"), "dir");
+
+    setupInitializedApp(root, false);
+    vi.spyOn(CreateProject.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(CreateResource.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(Export.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+    await CreateProject.run(["my.app", "en", "fr"], CLI_ROOT);
+    await CreateResource.run(["my.app", "Messages"], CLI_ROOT);
+    await Export.run([], CLI_ROOT);
+
+    const xliffPath = join(root, "l10n", "xliff", "my.app.xliff");
+    writeFileSync(
+      xliffPath,
+      translateXliff(readFileSync(xliffPath, "utf-8"), { "Sample value.": "Valeur d’exemple." })
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.chdir(origCwd);
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  test.each([[[]], [["--project", "my.app"]]])("export → translate in place → import %j", async (args) => {
+    const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+
+    await ImportCmd.run(args, CLI_ROOT);
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    const jsonPath = join(root, "l10n", "translations", "my.app", "fr", "Messages.json");
+    const messages = (JSON.parse(readFileSync(jsonPath, "utf-8")) as { messages: { key: string; value: string }[] })
+      .messages;
+    expect(messages.find((m) => m.key === "sampleKey")?.value).toBe("Valeur d’exemple.");
+    expect(existsSync(join(root, "l10n", "translations", "my"))).toBe(false);
+  });
+});
