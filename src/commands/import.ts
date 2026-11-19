@@ -109,14 +109,16 @@ export default class Import extends Command {
         if (result) {
           const relPaths = translationFilePaths(result);
           // Warn before writing; the last source still wins, in sorted path order.
-          relPaths.forEach((rel, i) => {
-            const previous = relPaths.indexOf(rel) < i ? xliffPath : writtenBy.get(rel);
-            if (previous === xliffPath) {
+          const seenInFile = new Set<string>();
+          for (const rel of relPaths) {
+            const earlierFile = writtenBy.get(rel);
+            if (seenInFile.has(rel)) {
               this.warn(`${rel} appears more than once in ${xliffPath}; the last one is kept`);
-            } else if (previous) {
-              this.warn(`${rel} from ${xliffPath} overwrites the one from ${previous}`);
+            } else if (earlierFile) {
+              this.warn(`${rel} from ${xliffPath} overwrites the one from ${earlierFile}`);
             }
-          });
+            seenInFile.add(rel);
+          }
           await writeTranslationFiles(translationsDir, result);
           for (const [i, { title }] of result.resources.entries()) {
             writtenBy.set(relPaths[i]!, xliffPath);
