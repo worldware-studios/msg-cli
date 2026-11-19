@@ -106,11 +106,13 @@ const LOCALE_PATTERN = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$/;
  * xliffDir may also indicate project/locale (e.g. xliff/zh/project.xliff).
  * @param filePath - Absolute path to XLIFF file
  * @param xliffDir - Absolute path to the xliff directory the file was found in
- * @returns Object with project and locale (locale may be undefined for monolingual)
+ * @returns Object with project and locale (locale may be undefined for monolingual);
+ *   `filenameLocale` is the locale from the file name alone (`project.locale.xliff`)
  */
 export function parseXliffFilename(filePath: string, xliffDir: string): {
   project: string;
   locale?: string;
+  filenameLocale?: string;
 } {
   const filename = basename(filePath);
   const match = filename.match(XLIFF_FILENAME_PATTERN);
@@ -122,7 +124,7 @@ export function parseXliffFilename(filePath: string, xliffDir: string): {
     match?.[2] ??
     xliffDirSegments(xliffDir, filePath).find((part) => LOCALE_PATTERN.test(part));
 
-  return { project, locale };
+  return { project, locale, filenameLocale: match?.[2] };
 }
 
 /** Duck-type check for MsgProject. */
@@ -514,15 +516,21 @@ export interface ImportResult {
  * @param xliffPath - Absolute path to XLIFF file
  * @param projectsDir - Absolute path to i18n/projects
  * @param projectName - Project name (from filename, for loading MsgProject)
- * @param locale - Target locale (from filename)
- * @returns ImportResult or null if file should be skipped
+ * @param pathLocale - Locale from the file name, if any; must match the file's `trgLang`
+ * @param warn - Receives a message for each skip the user should hear about
+ *   (monolingual file, file name locale that disagrees with `trgLang`)
+ * @returns ImportResult (locale = the file's `trgLang`) or null if the file should be skipped
  */
 export async function processXliffFile(
   xliffPath: string,
   projectsDir: string,
   projectName: string,
-  locale: string
+  pathLocale: string | undefined,
+  warn: (message: string) => void = () => {}
 ): Promise<ImportResult | null> {
+  void warn;
+  if (!pathLocale) return null;
+  const locale = pathLocale;
   let project;
   try {
     project = await importMsgProject(projectsDir, projectName);
