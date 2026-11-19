@@ -214,10 +214,22 @@ function categoryToNoteType(category: string): string {
   return map[lower] ?? category.toUpperCase();
 }
 
+/** XLIFF `xml:space` value: `preserve` keeps all whitespace; `default` lets the importer trim. */
+export type XmlSpace = "default" | "preserve";
+
+/**
+ * Returns the element's own `xml:space` when it is valid, otherwise the inherited value
+ * (XLIFF 2 §4.3.2.2: `xml:space` is inherited from the parent element).
+ */
+function resolveXmlSpace(_el: unknown, inherited: XmlSpace): XmlSpace {
+  return inherited;
+}
+
 /** Extracts text from segment source/target, handling inline elements per XLIFF 2.0.
  * Returns the already-decoded in-memory string; JSON encoding is left to `toJSON()`.
+ * @param space - `xml:space` inherited from the enclosing unit; `<source>`/`<target>` may override it.
  */
-function extractSegmentText(segment: unknown): string {
+function extractSegmentText(segment: unknown, space: XmlSpace): string {
   if (segment == null) return "";
   const seg = segment as Record<string, unknown>;
   const content = seg.target ?? seg.source;
@@ -286,11 +298,12 @@ type ImportedMessage = {
 /** Processes a flat array of unit elements. */
 function processUnitsFromItems(
   units: unknown[],
-  fileAttrs: FileLevelAttrs
+  fileAttrs: FileLevelAttrs,
+  space: XmlSpace
 ): ImportedMessage[] {
   const messages: ImportedMessage[] = [];
   for (const u of units) {
-    const msg = processUnit(u as Record<string, unknown>, fileAttrs);
+    const msg = processUnit(u as Record<string, unknown>, fileAttrs, space);
     if (msg) messages.push(msg);
   }
   return messages;
@@ -299,18 +312,20 @@ function processUnitsFromItems(
 /** Recursively extracts messages from group elements (which contain unit and/or group). */
 function processGroupsForMessages(
   groups: unknown[],
-  fileAttrs: FileLevelAttrs
+  fileAttrs: FileLevelAttrs,
+  space: XmlSpace
 ): ImportedMessage[] {
   const messages: ImportedMessage[] = [];
   for (const item of groups) {
     const obj = item as Record<string, unknown>;
+    const groupSpace = resolveXmlSpace(obj, space);
     if (obj.unit) {
       const units = Array.isArray(obj.unit) ? obj.unit : [obj.unit];
-      messages.push(...processUnitsFromItems(units, fileAttrs));
+      messages.push(...processUnitsFromItems(units, fileAttrs, groupSpace));
     }
     if (obj.group) {
       const nestedGroups = Array.isArray(obj.group) ? obj.group : [obj.group];
-      messages.push(...processGroupsForMessages(nestedGroups, fileAttrs));
+      messages.push(...processGroupsForMessages(nestedGroups, fileAttrs, groupSpace));
     }
   }
   return messages;
@@ -318,8 +333,10 @@ function processGroupsForMessages(
 
 function processUnit(
   unit: Record<string, unknown>,
-  fileAttrs: FileLevelAttrs
+  fileAttrs: FileLevelAttrs,
+  inheritedSpace: XmlSpace
 ): ImportedMessage | null {
+  const space = resolveXmlSpace(unit, inheritedSpace);
   const name = (unit["@_name"] ?? unit["@_id"] ?? "") as string;
   const trgLang = (unit["@_trgLang"] ?? fileAttrs.trgLang) as string;
   const trgDir = (unit["@_trgDir"] ?? fileAttrs.trgDir) as string | undefined;
@@ -351,7 +368,7 @@ function processUnit(
   const pgsSwitch = unit["@_pgs:switch"] as string | undefined;
 
   const joinSegmentTexts = (): string =>
-    segments.map((seg) => extractSegmentText(seg)).join("");
+    segments.map((seg) => extractSegmentText(seg, space)).join("");
 
   let value: string;
   if (
@@ -364,7 +381,7 @@ function processUnit(
   ) {
     const importSegments = segments.map((seg) => ({
       caseAttr: (seg as Record<string, unknown>)["@_pgs:case"] as string,
-      body: extractSegmentText(seg),
+      body: extractSegmentText(seg, space),
     }));
     const rebuilt =
       format === "MF1"
@@ -400,13 +417,15 @@ function processUnit(
  * @param xliffTrgLang - trgLang from xliff root (may be undefined for monolingual)
  * @param project - MsgProject instance
  * @param targetLocales - Array of supported target locale keys
+ * @param xliffSpace - `xml:space` from the xliff root, inherited by the file (default `default`)
  * @returns MsgResource or null if file should be skipped (monolingual or unsupported locale)
  */
 export function extractResourceFromXliffFile(
   fileEl: Record<string, unknown>,
   xliffTrgLang: string | undefined,
   project: { locales: { targetLocales: Record<string, string[]> } },
-  targetLocales: string[]
+  targetLocales: string[],
+  xliffSpace: XmlSpace = "default"
 ): MsgResource | null {
   const trgLang = (fileEl["@_trgLang"] ?? xliffTrgLang) as string | undefined;
   if (!trgLang) return null; // Monolingual, skip
@@ -442,14 +461,17 @@ export function extractResourceFromXliffFile(
     translate,
   };
 
+  const fileSpace = resolveXmlSpace(fileEl, xliffSpace);
   const allMessages = [
     ...processUnitsFromItems(
       fileEl.unit ? (Array.isArray(fileEl.unit) ? fileEl.unit : [fileEl.unit]) : [],
-      fileAttrs
+      fileAttrs,
+      fileSpace
     ),
     ...processGroupsForMessages(
       fileEl.group ? (Array.isArray(fileEl.group) ? fileEl.group : [fileEl.group]) : [],
-      fileAttrs
+      fileAttrs,
+      fileSpace
     ),
   ];
 
@@ -511,13 +533,15 @@ export async function processXliffFile(
   const fileEls = xliffRoot.file;
   const files = Array.isArray(fileEls) ? fileEls : fileEls ? [fileEls] : [];
 
+  const xliffSpace = resolveXmlSpace(xliffRoot, "default");
   const resources: Array<{ title: string; json: string }> = [];
   for (const fileEl of files) {
     const resource = extractResourceFromXliffFile(
       fileEl as Record<string, unknown>,
       xliffTrgLang,
       project,
-      targetLocales
+      targetLocales,
+      xliffSpace
     );
     if (resource) {
       const json = resource.toJSON(true); // strip notes

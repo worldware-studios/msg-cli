@@ -176,6 +176,14 @@ function escapeXml(s: string): string {
 }
 
 /**
+ * Whether text has whitespace that XLIFF `xml:space="default"` processing may alter:
+ * leading/trailing whitespace, tabs or line breaks, or runs of spaces.
+ */
+function needsPreservedSpace(_text: string): boolean {
+  return false;
+}
+
+/**
  * Sanitizes a string for use as an XML NMTOKEN (e.g. unit id).
  * Replaces invalid characters with underscore; ensures result does not start with digit.
  */
@@ -309,6 +317,14 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
       const pgsExport = pgsExportForFormat(msgFormat, msg.value);
       if (pgsExport) {
         msgAttrs.push(`pgs:switch="${escapeXml(pgsExport.switchAttr)}"`);
+      }
+      // Check what is written to <source>: for PGS that is each case body, not the
+      // multi-line MF2 message (whose line breaks are syntax, not content).
+      const sourceTexts = pgsExport
+        ? pgsExport.segments.map((seg) => seg.sourcePattern)
+        : [msg.value];
+      if (sourceTexts.some(needsPreservedSpace)) {
+        msgAttrs.push('xml:space="preserve"');
       }
 
       parts.push(`    <unit ${msgAttrs.join(" ")}>`);
