@@ -761,75 +761,73 @@ one {{一}}
       expect(result!.getData(true).messages![0].value).toBe("你好");
     });
 
-    test("extracts segment with target having nested pc element", () => {
-      const fileEl = {
-        "@_original": "N.json",
-        "@_trgLang": "zh",
-        unit: {
-          "@_id": "u1",
-          "@_name": "k",
-          segment: {
-            target: {
-              pc: { "#text": "Hello " },
-              "#text": "world",
-            },
-          },
-        },
-      };
-      const result = extractResourceFromXliffFile(
-        fileEl as unknown as Record<string, unknown>,
-        "zh",
-        project,
-        ["zh"]
-      );
-      expect(result!.getData(true).messages![0].value).toContain("Hello");
-      expect(result!.getData(true).messages![0].value).toContain("world");
-    });
+    describe("inline elements (#47)", () => {
+      /** Parses a one-unit XLIFF document with the given segment body and imports its value. */
+      function importSegment(segmentXml: string): string {
+        const xml =
+          '<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">' +
+          `<file id="f1" original="T.json"><unit id="u1" name="k"><segment>${segmentXml}</segment></unit></file></xliff>`;
+        const xliff = (parseXliff20(xml) as Record<string, unknown>).xliff as Record<string, unknown>;
+        const result = extractResourceFromXliffFile(xliff.file as Record<string, unknown>, "zh", project, ["zh"]);
+        return result!.getData(true).messages![0]!.value;
+      }
+      const importTarget = (targetXml: string) =>
+        importSegment(`<source>x</source><target>${targetXml}</target>`);
 
-    test("extracts segment with target having array of inline elements", () => {
-      const fileEl = {
-        "@_original": "A.json",
-        "@_trgLang": "zh",
-        unit: {
-          "@_id": "u1",
-          "@_name": "k",
-          segment: {
-            target: {
-              pc: [{ "#text": "Part1" }, { "#text": "Part2" }],
-            },
-          },
-        },
-      };
-      const result = extractResourceFromXliffFile(
-        fileEl as unknown as Record<string, unknown>,
-        "zh",
-        project,
-        ["zh"]
-      );
-      expect(result!.getData(true).messages![0].value).toBe("Part1Part2");
-    });
+      test.each([
+        ['Hello <pc id="1">bold</pc> and <pc id="2">more</pc>!', "Hello bold and more!"],
+        ['Hi <pc id="1">one</pc>.', "Hi one."],
+        ['Hi <ph id="1" equiv="{name}"/>.', "Hi {name}."],
+      ])("keeps document order and spacing: %s", (target, expected) => {
+        expect(importTarget(target)).toBe(expected);
+      });
 
-    test("extracts segment with target having single inline object (mrk) for branch coverage", () => {
-      const fileEl = {
-        "@_original": "M.json",
-        "@_trgLang": "zh",
-        unit: {
-          "@_id": "u1",
-          "@_name": "k",
-          segment: {
-            target: {
-              mrk: { "#text": "marked text" },
-            },
-          },
-        },
-      };
-      const result = extractResourceFromXliffFile(
-        fileEl as unknown as Record<string, unknown>,
-        "zh",
-        project,
-        ["zh"]
-      );
-      expect(result!.getData(true).messages![0].value).toBe("marked text");
+      test("flattens nested pc and mrk in order", () => {
+        expect(importTarget('A <pc id="1">b <mrk id="m1" type="term">c</mrk> d</pc> e')).toBe("A b c d e");
+      });
+
+      test("mixes ph with text, preferring equiv over disp and emitting nothing without either", () => {
+        expect(
+          importTarget('<ph id="1" equiv="{a}" disp="A"/> and <ph id="2" disp="{b}"/>,<ph id="3"/> end')
+        ).toBe("{a} and {b}, end");
+      });
+
+      test("uses equiv for sc/ec, skips sm/em markers, and decodes cp", () => {
+        expect(
+          importTarget('<sc id="1" equiv="["/>x<ec startRef="1" equiv="]"/> <sm id="s"/>y<em startRef="s"/><cp hex="263A"/>')
+        ).toBe("[x] y\u263A");
+      });
+
+      test("substitutes U+FFFD for an invalid or missing cp hex", () => {
+        expect(importTarget('a<cp hex="110000"/><cp hex="zz"/><cp/>b')).toBe("a\uFFFD\uFFFD\uFFFDb");
+      });
+
+      test("keeps CDATA text in place", () => {
+        expect(importTarget("a <![CDATA[<b> & c]]> d")).toBe("a <b> & c d");
+      });
+
+      test("decodes entities inside inline content", () => {
+        expect(importTarget('<pc id="1">a &amp; b &lt;c&gt;</pc> &quot;d&quot;')).toBe('a & b <c> "d"');
+      });
+
+      test("handles a target element that has attributes", () => {
+        expect(importSegment('<source>x</source><target xml:lang="zh">Hi <pc id="1">there</pc>!</target>')).toBe(
+          "Hi there!"
+        );
+      });
+
+      test("falls back to source with inline elements when target is missing", () => {
+        expect(importSegment('<source>Hi <pc id="1">there</pc>!</source>')).toBe("Hi there!");
+      });
+
+      test("keeps numeric-looking text as a string", () => {
+        expect(importTarget("42")).toBe("42");
+      });
+
+      test("trims leading and trailing whitespace as plain-text targets always have", () => {
+        expect(importTarget('  Hi <pc id="1">there</pc>  ')).toBe("Hi there");
+        expect(importTarget("  plain  ")).toBe("plain");
+      });
     });
 
     test("extracts segment value from source when target missing", () => {
