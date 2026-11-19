@@ -307,7 +307,7 @@ msg import -l zh
 
 **Behavior:**
 
-- Recursively finds all `.xliff` and `.xlf` files under `l10n/xliff`.
+- Recursively finds all `.xliff` and `.xlf` files under `l10n/xliff` and processes them in sorted path order.
 - The project is taken from the filename (`myApp.zh.xliff` or `myApp.xliff` → `myApp`).
 - The target locale is the file's `trgLang`, wherever the file sits under `l10n/xliff` (e.g. `l10n/xliff/zh/myApp.xliff`, `l10n/xliff/vendor/zh/myApp.xliff`, or `l10n/xliff/myApp.xliff`).
 - A locale in the filename must match `trgLang` (case-insensitive). Otherwise the file is skipped with a warning, e.g. `Skipping …/myApp.fr.xliff: file name locale 'fr' does not match trgLang 'de'`. Directory names are not checked against `trgLang`.
@@ -319,6 +319,7 @@ msg import -l zh
 - Skips files whose `trgLang` is not in the project's `targetLocales`.
 - Skips files when the matching project file does not exist or cannot be loaded.
 - Writes JSON to `l10n/translations/<project>/<trgLang>/<title>.json`.
+- When two sources write the same translation file (e.g. `test.zh.xliff` and `zh/test.xliff`, or two `<file>` elements with the same `original` in one XLIFF), the later one in sorted order wins, with a warning: `test/zh/Example.json from …/zh/test.xliff overwrites the one from …/test.zh.xliff`, or `… appears more than once in …; the last one is kept`. The summary counts distinct files written.
 - Preserves existing translation files for other projects or locales when filtering.
 - Errors on malformed XLIFF and logs each step.
 

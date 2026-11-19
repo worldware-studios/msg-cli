@@ -126,7 +126,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 ### Operations
 
 1. **Find xliff 2.0 files.** 
-  - Recursively find all the xliff files in the `l10n/xliff` directory. Return an array of absolute paths.
+  - Recursively find all the xliff files in the `l10n/xliff` directory. Return an array of absolute paths, sorted, so files are processed in the same order everywhere.
 2. **Filter files by project name (optional).** 
   - If `projectName` is passed to the `--project` flag, filter the array of paths to those whose file name parses to exactly `projectName` (`projectName.xliff` or `projectName.locale.xliff`, in any directory). This is the project step 4 loads, so directories are not matched, and names that only share a prefix (`projectName` vs `projectNameX`) are not selected. Also keep paths whose whole file name without the extension is `projectName` (a dotted name such as `my.app.xliff` for `my.app`). Step 4 may resolve such a file to another project; then skip it without writing.
 3. **Filter files by locale (optional).**
@@ -159,6 +159,8 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
     - Create a directory named after the project name inside `l10n/translations`, if it does not already exist
     - Create a directory inside the directory named after the project name that is named after the locale (`trgLang`), if it does not already exist
     - Write the serialized JSON string to a file inside the locale code directory. The file name should be the resource `title`, and the extension should be `.json`
+    - If an earlier source in this run already wrote that file, warn before overwriting it: `<project>/<locale>/<title>.json from <path> overwrites the one from <earlier path>`, or, when both come from the same xliff file, `<project>/<locale>/<title>.json appears more than once in <path>; the last one is kept`. The last source wins.
+5. **Report.** Log `Imported <n> translation file(s).`, where `n` counts distinct files written.
 
 
 ## 7. Implementation
@@ -212,6 +214,16 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - Then:
 
 #### Edge Cases
+
+- _[Two xliff files write the same translation file]_
+  - Given: `l10n/xliff/test.zh.xliff` and `l10n/xliff/zh/test.xliff`, both `trgLang="zh"` with `original="Example.json"`
+  - When: the user runs `import`
+  - Then: the warning `test/zh/Example.json from <…/zh/test.xliff> overwrites the one from <…/test.zh.xliff>` is shown, `zh/test.xliff`'s translation is kept, and the summary reports 1 file
+
+- _[One xliff file repeats a resource]_
+  - Given: an xliff with two `<file original="A.json">` elements
+  - When: the user runs `import`
+  - Then: the warning `test/zh/A.json appears more than once in <path>; the last one is kept` is shown, and the summary reports 1 file
 
 - _[--language by trgLang]_
   - Given: `l10n/xliff/app.xliff` with `trgLang="zh"` and `l10n/xliff/zh/other.xliff` with `trgLang="de"`
