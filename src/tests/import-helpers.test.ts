@@ -190,68 +190,51 @@ describe("import-helpers", () => {
 
   describe("parseXliffFilename", () => {
     test("extracts project and locale from project.locale.xliff", () => {
-      const result = parseXliffFilename("/a/b/test.zh.xliff", "/a/b");
+      const result = parseXliffFilename("/a/b/test.zh.xliff");
       expect(result.project).toBe("test");
       expect(result.locale).toBe("zh");
     });
 
     test("extracts project only from project.xliff", () => {
-      const result = parseXliffFilename("/a/b/test.xliff", "/a/b");
+      const result = parseXliffFilename("/a/b/test.xliff");
       expect(result.project).toBe("test");
       expect(result.locale).toBeUndefined();
     });
 
     test("handles .xlf extension", () => {
-      const result = parseXliffFilename("/a/b/app.fr.xlf", "/a/b");
+      const result = parseXliffFilename("/a/b/app.fr.xlf");
       expect(result.project).toBe("app");
       expect(result.locale).toBe("fr");
     });
 
-    test("extracts locale from path when not in filename", () => {
-      const result = parseXliffFilename("/xliff/myapp/zh/file.xliff", "/xliff");
-      expect(result.locale).toBe("zh");
-    });
-
     test("handles filename that does not match pattern", () => {
-      const result = parseXliffFilename("/a/b/file.xliff", "/a/b");
+      const result = parseXliffFilename("/a/b/file.xliff");
       expect(result.project).toBe("file");
       expect(result.locale).toBeUndefined();
     });
 
     test("extracts a project for a short filename", () => {
-      const result = parseXliffFilename("/some/path/x.xliff", "/some/path");
+      const result = parseXliffFilename("/some/path/x.xliff");
       expect(result.project).toBeDefined();
     });
 
     test("uses the file name as project for a bare .xliff", () => {
-      const result = parseXliffFilename("/a/b/c/.xliff", "/a/b/c");
+      const result = parseXliffFilename("/a/b/c/.xliff");
       expect(result.project).toBeTruthy();
       expect(result.project).not.toBe("");
     });
 
-    test("extracts locale from path when filename is only extension (.xlf)", () => {
-      // Filename ".xlf" does not match pattern; locale comes from path segment "zh"
-      const result = parseXliffFilename("/xliff/myproj/zh/.xlf", "/xliff");
-      expect(result.locale).toBe("zh");
-      expect(result.project).toBeTruthy();
-    });
-
-    test("does not treat a locale-shaped directory above the xliff root as the locale (#49)", () => {
-      const result = parseXliffFilename(
-        "/var/tmp/l10n/xliff/test.xliff",
-        "/var/tmp/l10n/xliff"
-      );
-      expect(result.project).toBe("test");
+    // #55: import takes the locale from trgLang (#57), so directories are never
+    // guessed as a locale; a short directory such as "app" used to win.
+    test.each([
+      "/xliff/app/zh/test.xliff",
+      "/xliff/zh/test.xliff",
+      "/var/tmp/l10n/xliff/test.xliff",
+      "/xliff/myproj/zh/.xlf",
+    ])("takes the locale from the file name only, never a directory: %s", (path) => {
+      const result = parseXliffFilename(path);
       expect(result.locale).toBeUndefined();
-    });
-
-    test("extracts locale from a directory under the xliff root (#49)", () => {
-      const result = parseXliffFilename(
-        "/var/app/l10n/xliff/zh/test.xliff",
-        "/var/app/l10n/xliff"
-      );
-      expect(result.project).toBe("test");
-      expect(result.locale).toBe("zh");
+      expect(result.project).toBeTruthy();
     });
   });
 
