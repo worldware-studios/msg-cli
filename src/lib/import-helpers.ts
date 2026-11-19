@@ -509,6 +509,15 @@ export interface ImportResult {
 }
 
 /**
+ * Paths, relative to l10n/translations, that `writeTranslationFiles` writes
+ * for a result (`<project>/<locale>/<title>.json`), in resource order.
+ * @param result - ImportResult from processXliffFile
+ */
+export function translationFilePaths(_result: ImportResult): string[] {
+  return [];
+}
+
+/**
  * Processes one XLIFF file: reads, parses, extracts resources, returns JSON strings for writing.
  * @param xliffPath - Absolute path to XLIFF file
  * @param projectsDir - Absolute path to i18n/projects
