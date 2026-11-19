@@ -188,6 +188,29 @@ describe("Import command", () => {
       const outputPath = join(translationsDir, "test", "zh", "Example.json");
       expect(existsSync(outputPath)).toBe(true);
     });
+
+    test("--language selects by trgLang, not the path (#69)", async () => {
+      const { xliffDir, translationsDir, projectsDir } = setupPackageWithI18nAndL10n(tmp);
+      const zh = readFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), "utf-8");
+      // Bilingual zh with no locale in its path: selected.
+      writeFileSync(join(xliffDir, "test.xliff"), zh);
+      // A zh/ directory holding a German file: not selected.
+      mkdirSync(join(xliffDir, "zh"));
+      writeFileSync(
+        join(xliffDir, "zh", "other.xliff"),
+        zh.replace('trgLang="zh"', 'trgLang="de"').replace('original="Example.json"', 'original="Other.json"')
+      );
+      copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(projectsDir, "test.ts"));
+      copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(projectsDir, "other.ts"));
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+      const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+
+      await ImportCmd.run(["--language", "zh"], CLI_ROOT);
+
+      expect(existsSync(join(translationsDir, "test", "zh", "Example.json"))).toBe(true);
+      expect(existsSync(join(translationsDir, "other"))).toBe(false);
+      logSpy.mockRestore();
+    });
   });
 
   describe("Edge cases", () => {

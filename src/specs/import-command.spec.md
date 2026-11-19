@@ -130,7 +130,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 2. **Filter files by project name (optional).** 
   - If `projectName` is passed to the `--project` flag, filter the array of paths to those whose file name parses to exactly `projectName` (`projectName.xliff` or `projectName.locale.xliff`, in any directory). This is the project step 4 loads, so directories are not matched, and names that only share a prefix (`projectName` vs `projectNameX`) are not selected. Also keep paths whose whole file name without the extension is `projectName` (a dotted name such as `my.app.xliff` for `my.app`). Step 4 may resolve such a file to another project; then skip it without writing.
 3. **Filter files by locale (optional).**
-  - If `locale` is passed to the `--language` flag, filter the array to those paths that have `.[locale].` in the filename or where `locale` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
+  - If `locale` is passed to the `--language` flag, read and parse each file and keep those whose `trgLang` equals `locale` (compared case-insensitively), wherever they sit; the path is not consulted, since step 4 takes the locale from `trgLang`. Drop monolingual files (no `trgLang`). Keep files that cannot be parsed, so step 4 reports them as malformed.
 4. **Extract translations**
   - Iterate through the array of filtered file paths to process them.
     - Determine the project from the file name (`project.locale.xliff` or `project.xliff`), and note the file name locale, if any.
@@ -212,6 +212,11 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - Then:
 
 #### Edge Cases
+
+- _[--language by trgLang]_
+  - Given: `l10n/xliff/app.xliff` with `trgLang="zh"` and `l10n/xliff/zh/other.xliff` with `trgLang="de"`
+  - When: the user runs `import --language zh`
+  - Then: only `app.xliff` is imported
 
 - _[Dotted project name]_
   - Given: projects `my` and `my.app`, and a bilingual `l10n/xliff/my.app.xliff` with `trgLang="zh"`

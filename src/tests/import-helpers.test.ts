@@ -17,7 +17,6 @@ import {
   filterXliffPathsByProject,
   filterXliffPathsByLocale,
   parseXliffFilename,
-  xliffDirSegments,
   parseXliff20,
   type XmlSpace,
   extractResourceFromXliffFile,
@@ -168,34 +167,49 @@ describe("import-helpers", () => {
   });
 
   describe("filterXliffPathsByLocale", () => {
-    test("returns empty when no paths match", () => {
-      const paths = ["/a/b/test.zh.xliff"];
-      const result = filterXliffPathsByLocale(paths, "fr", "/a/b");
-      expect(result).toEqual([]);
+    let dir: string;
+    const xliff = (trgLang?: string) =>
+      `<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en"${
+        trgLang ? ` trgLang="${trgLang}"` : ""
+      }></xliff>`;
+    /** Writes each file (relative path → content) under a temp dir; returns absolute paths. */
+    function write(files: Record<string, string>): string[] {
+      return Object.entries(files).map(([rel, content]) => {
+        const p = join(dir, rel);
+        mkdirSync(dirname(p), { recursive: true });
+        writeFileSync(p, content);
+        return p;
+      });
+    }
+    beforeEach(() => {
+      dir = join(tmpdir(), `msg-lang-filter-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      mkdirSync(dir, { recursive: true });
+    });
+    afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+    test("keeps files whose trgLang is the locale, wherever they sit (#69)", async () => {
+      const [flat, nested, named, other] = write({
+        "app.xliff": xliff("zh"),
+        "vendor/x/app.xliff": xliff("zh"),
+        "app.zh.xliff": xliff("zh"),
+        "app.fr.xliff": xliff("fr"),
+      });
+      expect(await filterXliffPathsByLocale([flat!, nested!, named!, other!], "zh")).toEqual([flat, nested, named]);
     });
 
-    test("filters by locale in filename", () => {
-      const paths = [
-        "/a/b/test.zh.xliff",
-        "/a/b/test.fr.xliff",
-        "/a/b/test.de.xliff",
-      ];
-      const result = filterXliffPathsByLocale(paths, "fr", "/a/b");
-      expect(result).toHaveLength(1);
-      expect(result[0]).toContain(".fr.");
+    test("ignores the path: drops a zh-looking path whose trgLang is another locale (#69)", async () => {
+      const paths = write({ "zh/app.xliff": xliff("de"), "app.zh.xliff": xliff("de") });
+      expect(await filterXliffPathsByLocale(paths, "zh")).toEqual([]);
     });
 
-    test("filters by locale as directory in path", () => {
-      const paths = ["/xliff/test/zh/file.xliff", "/xliff/test/fr/file.xliff"];
-      const result = filterXliffPathsByLocale(paths, "zh", "/xliff");
-      expect(result).toHaveLength(1);
-      expect(result[0]).toContain("zh");
+    test("matches trgLang case-insensitively", async () => {
+      const paths = write({ "app.xliff": xliff("zh-Hant") });
+      expect(await filterXliffPathsByLocale(paths, "zh-hant")).toEqual(paths);
     });
 
-    test("ignores a locale-named directory above the xliff root (#49)", () => {
-      const paths = ["/fr/l10n/xliff/test.xliff"];
-      const result = filterXliffPathsByLocale(paths, "fr", "/fr/l10n/xliff");
-      expect(result).toEqual([]);
+    test("drops monolingual files and keeps unparseable ones for import to report", async () => {
+      const [mono, bad] = write({ "mono.xliff": xliff(), "bad.xliff": "not xml <<<" });
+      expect(await filterXliffPathsByLocale([mono!, bad!], "zh")).toEqual([bad]);
     });
   });
 
@@ -246,26 +260,6 @@ describe("import-helpers", () => {
       const result = parseXliffFilename(path);
       expect(result.locale).toBeUndefined();
       expect(result.project).toBeTruthy();
-    });
-  });
-
-  describe("xliffDirSegments", () => {
-    test("returns the directories between the xliff root and the file", () => {
-      expect(
-        xliffDirSegments("/r/l10n/xliff", "/r/l10n/xliff/myapp/zh/file.xliff")
-      ).toEqual(["myapp", "zh"]);
-    });
-
-    test("returns no segments for a file directly in the xliff root", () => {
-      expect(xliffDirSegments("/var/l10n/xliff", "/var/l10n/xliff/test.xliff")).toEqual([]);
-    });
-
-    test("tolerates a trailing separator on the xliff root", () => {
-      expect(xliffDirSegments("/r/xliff/", "/r/xliff/zh/test.xliff")).toEqual(["zh"]);
-    });
-
-    test("returns no segments for a file outside the xliff root", () => {
-      expect(xliffDirSegments("/r/l10n/xliff", "/other/zh/test.xliff")).toEqual([]);
     });
   });
 

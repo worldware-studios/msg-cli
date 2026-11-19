@@ -222,3 +222,47 @@ describe("dotted project name end to end (#68)", () => {
     expect(existsSync(join(root, "l10n", "translations", "my"))).toBe(false);
   });
 });
+
+/**
+ * #69: a translator's tool fills the exported l10n/xliff/Main.xliff in place
+ * (trgLang="fr"), so its path has no locale. --language fr must still select it.
+ */
+describe("--language selects by trgLang end to end (#69)", () => {
+  let tmp: string;
+  let root: string;
+  let origCwd: string;
+
+  beforeEach(async () => {
+    tmp = mkdtempSync(join(tmpdir(), "msg-language-e2e-"));
+    // Resolve symlinks (macOS /var -> /private/var) to match process.cwd().
+    root = realpathSync(tmp);
+    origCwd = process.cwd();
+    process.chdir(root);
+    symlinkSync(join(CLI_ROOT, "node_modules"), join(root, "node_modules"), "dir");
+
+    setupInitializedApp(root, false);
+    vi.spyOn(CreateProject.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(CreateResource.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(Export.prototype, "log").mockImplementation(() => {});
+    vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+    await CreateProject.run(["Main", "en", "fr"], CLI_ROOT);
+    await CreateResource.run(["Main", "Messages"], CLI_ROOT);
+    await Export.run([], CLI_ROOT);
+    const xliffPath = join(root, "l10n", "xliff", "Main.xliff");
+    writeFileSync(
+      xliffPath,
+      translateXliff(readFileSync(xliffPath, "utf-8"), { "Sample value.": "Valeur d’exemple." })
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.chdir(origCwd);
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  test("export → translate in place → import --language fr", async () => {
+    await ImportCmd.run(["--language", "fr"], CLI_ROOT);
+    expect(existsSync(join(root, "l10n", "translations", "Main", "fr", "Messages.json"))).toBe(true);
+  });
+});
