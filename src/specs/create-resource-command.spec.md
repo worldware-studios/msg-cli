@@ -374,7 +374,7 @@ The general order of operations for the command happy path should be as follows:
 - _[Generated file is invalid or not importable]_
   - Given: Post-write validation is performed (per requirement: "validate that the file is valid and importable")
   - When: The written file fails validation or cannot be imported
-  - Then: Command throws an error and ideally cleans up or reports that the file is not valid/importable.
+  - Then: Command deletes the generated file and fails with `Generated file is invalid or not importable: <reason>`.
 
 ### Testing Environment
 
