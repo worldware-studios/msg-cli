@@ -34,7 +34,9 @@ export async function findXliffFilePaths(directory: string): Promise<string[]> {
       result.push(...(await findXliffFilePaths(fullPath)));
     }
   }
-  return result;
+  // Sort full paths so the processing order (and which of two sources for the
+  // same translation file wins, #71) doesn't depend on readdir's order.
+  return result.sort();
 }
 
 /**
@@ -513,8 +515,8 @@ export interface ImportResult {
  * for a result (`<project>/<locale>/<title>.json`), in resource order.
  * @param result - ImportResult from processXliffFile
  */
-export function translationFilePaths(_result: ImportResult): string[] {
-  return [];
+export function translationFilePaths(result: ImportResult): string[] {
+  return result.resources.map(({ title }) => join(result.project, result.locale, `${title}.json`));
 }
 
 /**
@@ -604,11 +606,9 @@ export async function writeTranslationFiles(
   result: ImportResult
 ): Promise<void> {
   const { project, locale, resources } = result;
-  const projectDir = join(translationsDir, project);
-  const localeDir = join(projectDir, locale);
-  await mkdir(localeDir, { recursive: true });
-  for (const { title, json } of resources) {
-    const filePath = join(localeDir, `${title}.json`);
-    await writeFile(filePath, json, "utf-8");
+  await mkdir(join(translationsDir, project, locale), { recursive: true });
+  const relPaths = translationFilePaths(result);
+  for (const [i, { json }] of resources.entries()) {
+    await writeFile(join(translationsDir, relPaths[i]!), json, "utf-8");
   }
 }
