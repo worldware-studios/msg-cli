@@ -326,7 +326,8 @@ describe("Import command", () => {
         const warnings = warnSpy.mock.calls.map((c) => c[0]);
         logSpy.mockRestore();
         warnSpy.mockRestore();
-        return { xliffPath, translationsDir, warnings };
+        // The command derives paths from process.cwd(), which resolves symlinks (macOS /var).
+        return { xliffPath: realpathSync(xliffPath), translationsDir, warnings };
       }
 
       test("skips and warns when the file name locale disagrees with trgLang", async () => {
