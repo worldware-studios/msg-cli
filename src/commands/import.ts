@@ -92,7 +92,7 @@ export default class Import extends Command {
 
     for (const xliffPath of filePaths) {
       // The file's trgLang is its locale; a locale in the file name must agree with it.
-      const { project: projectName, filenameLocale } = parseXliffFilename(xliffPath, xliffDir);
+      const { project: projectName, locale: filenameLocale } = parseXliffFilename(xliffPath);
 
       try {
         const result = await processXliffFile(
