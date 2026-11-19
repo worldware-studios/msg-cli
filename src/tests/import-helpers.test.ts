@@ -119,14 +119,16 @@ describe("import-helpers", () => {
       await expect(findXliffFilePaths(join(tmp, "nonexistent"))).rejects.toThrow();
     });
 
-    test("returns paths sorted, so import order is the same on every machine (#71)", async () => {
+    test("returns full paths sorted, independent of directory listing order (#71)", async () => {
+      // readdir lists "a" before "a.xlf", so a walk alone yields a/x.xliff first;
+      // sorting full paths puts a.xlf first ("." < "/").
       const dir = join(tmp, "sorted");
-      for (const rel of ["zh/b.xliff", "b.xliff", "a.xlf", "zh/a.xliff", "c/z.xliff"]) {
+      for (const rel of ["zh/b.xliff", "b.xliff", "a.xlf", "a/x.xliff", "zh/a.xliff", "c/z.xliff"]) {
         mkdirSync(dirname(join(dir, rel)), { recursive: true });
         writeFileSync(join(dir, rel), "<xliff/>");
       }
       expect(await findXliffFilePaths(dir)).toEqual(
-        ["a.xlf", "b.xliff", "c/z.xliff", "zh/a.xliff", "zh/b.xliff"].map((rel) => join(dir, rel))
+        ["a.xlf", "a/x.xliff", "b.xliff", "c/z.xliff", "zh/a.xliff", "zh/b.xliff"].map((rel) => join(dir, rel))
       );
     });
   });
