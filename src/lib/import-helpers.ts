@@ -128,6 +128,9 @@ function isMsgProjectLike(value: unknown): value is { locales: { targetLocales: 
   return typeof loc === "object" && loc !== null && !Array.isArray(loc);
 }
 
+/** Project file extensions under i18n/projects, in lookup order. */
+const PROJECT_FILE_EXTENSIONS = [".ts", ".js"];
+
 /**
  * Dynamically imports MsgProject from i18n/projects by project name.
  * @param projectsDir - Absolute path to i18n/projects
@@ -140,8 +143,7 @@ export async function importMsgProject(
   projectName: string
 ): Promise<{ locales: { targetLocales: Record<string, string[]> } }> {
   const basePath = join(projectsDir, projectName);
-  const exts = [".ts", ".js"];
-  for (const ext of exts) {
+  for (const ext of PROJECT_FILE_EXTENSIONS) {
     const p = `${basePath}${ext}`;
     if (existsSync(p)) {
       const url = pathToFileURL(p).href;
@@ -162,7 +164,7 @@ export async function importMsgProject(
  * @param projectName - Project name (file name without extension)
  */
 export function projectFileExists(projectsDir: string, projectName: string): boolean {
-  return [".ts", ".js"].some((ext) => existsSync(join(projectsDir, `${projectName}${ext}`)));
+  return PROJECT_FILE_EXTENSIONS.some((ext) => existsSync(join(projectsDir, `${projectName}${ext}`)));
 }
 
 const xmlParser = new XMLParser({
