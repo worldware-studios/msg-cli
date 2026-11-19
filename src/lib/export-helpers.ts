@@ -179,8 +179,8 @@ function escapeXml(s: string): string {
  * Whether text has whitespace that XLIFF `xml:space="default"` processing may alter:
  * leading/trailing whitespace, tabs or line breaks, or runs of spaces.
  */
-function needsPreservedSpace(_text: string): boolean {
-  return false;
+function needsPreservedSpace(text: string): boolean {
+  return /^[ \t\r\n]|[ \t\r\n]$|[\t\r\n]| {2}/.test(text);
 }
 
 /**
