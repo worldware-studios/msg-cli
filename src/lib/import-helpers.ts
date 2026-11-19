@@ -94,35 +94,26 @@ export function filterXliffPathsByLocale(
   });
 }
 
-/** Common locale-like path segments (BCP 47 patterns). */
-const LOCALE_PATTERN = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$/;
-
 /**
- * Extracts project name and locale from an XLIFF file path.
- * Filename patterns: project.locale.xliff, project.xliff. Directories under
- * xliffDir may also indicate project/locale (e.g. xliff/zh/project.xliff).
- * @param filePath - Absolute path to XLIFF file
- * @param xliffDir - Absolute path to the xliff directory the file was found in
- * @returns Object with project, a path-based locale hint, and `filenameLocale`
- *   (the locale from the file name alone, `project.locale.xliff`). Import takes
- *   the locale from the file's `trgLang` and checks only `filenameLocale` against it.
+ * Extracts project name and locale from an XLIFF file name
+ * (`project.locale.xliff` or `project.xliff`).
+ *
+ * Directories are not consulted: import takes the locale from the file's
+ * `trgLang` (#57) and only checks a file name locale against it. Guessing a
+ * locale from directories let short names like `app` win (#55).
+ * @param filePath - Path to an XLIFF file
+ * @returns Object with project and the file name's locale, if any
  */
-export function parseXliffFilename(filePath: string, xliffDir: string): {
+export function parseXliffFilename(filePath: string): {
   project: string;
   locale?: string;
-  filenameLocale?: string;
 } {
   const filename = basename(filePath);
   const match = filename.match(XLIFF_FILENAME_PATTERN);
   // Without a pattern match (e.g. a bare ".xliff"), fall back to the file
   // name itself; basename never yields "" here, so project is always set.
   const project = match?.[1] ?? basename(filename, extname(filename));
-  // If locale not in filename, check directories under the xliff root (e.g. xliff/project/zh/file.xliff)
-  const locale =
-    match?.[2] ??
-    xliffDirSegments(xliffDir, filePath).find((part) => LOCALE_PATTERN.test(part));
-
-  return { project, locale, filenameLocale: match?.[2] };
+  return { project, locale: match?.[2] };
 }
 
 /** Duck-type check for MsgProject. */
