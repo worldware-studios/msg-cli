@@ -79,7 +79,7 @@ export default class Import extends Command {
     }
 
     if (flags.language) {
-      filePaths = filterXliffPathsByLocale(filePaths, flags.language, xliffDir);
+      filePaths = await filterXliffPathsByLocale(filePaths, flags.language);
       if (filePaths.length === 0) {
         this.log(`No XLIFF files found for language '${flags.language}'. Nothing to import.`);
         return;

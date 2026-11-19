@@ -80,23 +80,20 @@ export function filterXliffPathsByProject(
 }
 
 /**
- * Filters XLIFF file paths by locale.
- * Keeps paths that have .[locale]. in the filename or locale as a directory under xliffDir.
+ * Filters XLIFF file paths by target locale: keeps files whose `trgLang`
+ * equals `locale` (case-insensitive), wherever they sit. Import takes a file's
+ * locale from `trgLang` (#57), so the path is not consulted (#69).
+ * Monolingual files (no `trgLang`) are dropped; files that cannot be parsed
+ * are kept so the import reports them.
  * @param filePaths - Array of absolute XLIFF file paths
  * @param locale - Locale code to filter by
- * @param xliffDir - Absolute path to the xliff directory the paths were found in
- * @returns Filtered array of paths
+ * @returns Filtered array of paths, in input order
  */
-export function filterXliffPathsByLocale(
+export async function filterXliffPathsByLocale(
   filePaths: string[],
-  locale: string,
-  xliffDir: string
-): string[] {
-  return filePaths.filter((p) => {
-    const filename = basename(p);
-    if (filename.includes(`.${locale}.`)) return true;
-    return xliffDirSegments(xliffDir, p).some((part) => part === locale);
-  });
+  _locale: string
+): Promise<string[]> {
+  return filePaths;
 }
 
 /**
