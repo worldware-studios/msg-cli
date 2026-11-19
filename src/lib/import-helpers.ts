@@ -163,7 +163,23 @@ export async function importMsgProject(
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: "@_",
+  // Keep segment content as raw XML: the default (non-order-preserving) mode
+  // groups mixed content by tag, scrambling text around inline elements.
+  // extractSegmentText re-parses it in document order.
+  stopNodes: ["*.source", "*.target"],
 });
+
+/** Parses segment content in document order, without trimming or type coercion. */
+const inlineContentParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  preserveOrder: true,
+  trimValues: false,
+  parseTagValue: false,
+});
+
+/** A node from a `preserveOrder` parse: one tag key (or `#text`) plus optional `:@` attributes. */
+type OrderedNode = Record<string, unknown> & { ":@"?: Record<string, string> };
 
 /**
  * Parses XLIFF 2.x XML string to a JavaScript object (2.0 and 2.2 supported).
@@ -204,30 +220,50 @@ function categoryToNoteType(category: string): string {
 function extractSegmentText(segment: unknown): string {
   if (segment == null) return "";
   const seg = segment as Record<string, unknown>;
-  const target = seg.target ?? seg.source;
-  if (typeof target === "string") return target;
-  if (target && typeof target === "object") {
-    return extractInlineText(target as Record<string, unknown>);
-  }
-  return "";
+  const content = seg.target ?? seg.source;
+  // A stop node with attributes (e.g. <target xml:lang="..">) parses as { "#text": raw, "@_...": ... }.
+  const raw =
+    content && typeof content === "object"
+      ? (content as Record<string, unknown>)["#text"]
+      : content;
+  if (typeof raw !== "string" || raw === "") return "";
+  const [root] = inlineContentParser.parse(`<c>${raw}</c>`) as OrderedNode[];
+  // Trim the ends only, matching how plain-text targets were always imported.
+  return extractInlineText(root!.c as OrderedNode[]).trim();
 }
 
-/** Recursively extracts text from XLIFF inline content (pc, mrk, ph, etc.). */
-function extractInlineText(node: Record<string, unknown>): string {
+/** Decodes a `<cp hex="..">` value, substituting U+FFFD when it is not a valid code point. */
+function codePointFromHex(hex: string | undefined): string {
+  const cp = /^[0-9a-f]{1,6}$/i.test(hex ?? "") ? parseInt(hex!, 16) : NaN;
+  return cp <= 0x10ffff ? String.fromCodePoint(cp) : "\uFFFD";
+}
+
+/** Rebuilds text from XLIFF inline content (pc, mrk, ph, ...) in document order. */
+function extractInlineText(nodes: OrderedNode[]): string {
   let text = "";
-  if ("#text" in node && typeof node["#text"] === "string") {
-    text += node["#text"];
-  }
-  const children = ["pc", "sc", "ec", "ph", "mrk", "sm", "em", "cp", "target", "source"];
-  for (const tag of children) {
-    const child = node[tag];
-    if (Array.isArray(child)) {
-      for (const c of child) {
-        const childObj = typeof c === "object" && c !== null ? c : {};
-        text += extractInlineText(childObj as Record<string, unknown>);
-      }
-    } else if (child && typeof child === "object") {
-      text += extractInlineText(child as Record<string, unknown>);
+  for (const node of nodes) {
+    if ("#text" in node) {
+      text += String(node["#text"]);
+      continue;
+    }
+    const tag = Object.keys(node).find((k) => k !== ":@");
+    const attrs = node[":@"] ?? {};
+    switch (tag) {
+      case "ph":
+      case "sc":
+      case "ec":
+        // Placeholder codes have no content; use their plain-text equivalent.
+        text += attrs["@_equiv"] ?? attrs["@_disp"] ?? "";
+        break;
+      case "cp":
+        text += codePointFromHex(attrs["@_hex"]);
+        break;
+      case "sm":
+      case "em":
+        break;
+      default:
+        // pc, mrk, and anything unrecognized contribute their content.
+        if (tag) text += extractInlineText(node[tag] as OrderedNode[]);
     }
   }
   return text;
