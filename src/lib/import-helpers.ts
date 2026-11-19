@@ -528,9 +528,26 @@ export async function processXliffFile(
   pathLocale: string | undefined,
   warn: (message: string) => void = () => {}
 ): Promise<ImportResult | null> {
-  void warn;
-  if (!pathLocale) return null;
-  const locale = pathLocale;
+  // Read the file first: trgLang, not the path, decides the locale (and whether
+  // the file is monolingual), and the user should hear about it even when no
+  // project matches.
+  const xml = await readFile(xliffPath, "utf-8");
+  const parsed = parseXliff20(xml);
+  const xliffRoot = (parsed as Record<string, unknown>).xliff as Record<string, unknown> | undefined;
+  if (!xliffRoot) return null;
+
+  const xliffTrgLang = xliffRoot["@_trgLang"] as string | undefined;
+  if (!xliffTrgLang) {
+    warn(`Skipping monolingual file (no target locale): ${xliffPath}`);
+    return null;
+  }
+  // BCP 47 tags are case-insensitive.
+  if (pathLocale && pathLocale.toLowerCase() !== xliffTrgLang.toLowerCase()) {
+    warn(`Skipping ${xliffPath}: file name locale '${pathLocale}' does not match trgLang '${xliffTrgLang}'`);
+    return null;
+  }
+  const locale = xliffTrgLang;
+
   let project;
   try {
     project = await importMsgProject(projectsDir, projectName);
@@ -540,14 +557,6 @@ export async function processXliffFile(
 
   const targetLocales = Object.keys(project.locales.targetLocales);
   if (!targetLocales.includes(locale)) return null;
-
-  const xml = await readFile(xliffPath, "utf-8");
-  const parsed = parseXliff20(xml);
-  const xliffRoot = (parsed as Record<string, unknown>).xliff as Record<string, unknown> | undefined;
-  if (!xliffRoot) return null;
-
-  const xliffTrgLang = xliffRoot["@_trgLang"] as string | undefined;
-  if (!xliffTrgLang) return null; // Monolingual
 
   const fileEls = xliffRoot.file;
   const files = Array.isArray(fileEls) ? fileEls : fileEls ? [fileEls] : [];
