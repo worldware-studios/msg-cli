@@ -350,6 +350,54 @@ describe("Import command", () => {
       logSpy.mockRestore();
     });
 
+    describe("two sources for one translation file (#71)", () => {
+      afterEach(() => vi.restoreAllMocks());
+
+      test("warns naming both XLIFF files, keeps the later one, and counts it once", async () => {
+        const { xliffDir, translationsDir, projectsDir } = setupPackageWithI18nAndL10n(tmp);
+        const zh = readFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), "utf-8");
+        // Paths are processed sorted: test.zh.xliff, then zh/test.xliff.
+        writeFileSync(join(xliffDir, "test.zh.xliff"), zh);
+        mkdirSync(join(xliffDir, "zh"));
+        writeFileSync(join(xliffDir, "zh", "test.xliff"), zh.replace("<target>你好</target>", "<target>您好</target>"));
+        copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(projectsDir, "test.ts"));
+        writeFileSync(join(tmp, "tsconfig.json"), "{}");
+        const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+        const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+
+        await ImportCmd.run([], CLI_ROOT);
+
+        const root = realpathSync(xliffDir);
+        expect(warnSpy).toHaveBeenCalledWith(
+          `${join("test", "zh", "Example.json")} from ${join(root, "zh", "test.xliff")} overwrites the one from ${join(root, "test.zh.xliff")}`
+        );
+        expect(logSpy).toHaveBeenCalledWith("Imported 1 translation file(s).");
+        expect(readFileSync(join(translationsDir, "test", "zh", "Example.json"), "utf-8")).toContain("您好");
+      });
+
+      test("warns when one XLIFF file has two <file> elements with the same original", async () => {
+        const { xliffDir, projectsDir } = setupPackageWithI18nAndL10n(tmp);
+        const xliffPath = join(xliffDir, "test.zh.xliff");
+        writeFileSync(
+          xliffPath,
+          `<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">` +
+            `<file id="f1" original="A.json"><unit id="u1" name="a"><segment><source>A</source><target>甲</target></segment></unit></file>` +
+            `<file id="f2" original="A.json"><unit id="u1" name="a"><segment><source>A</source><target>乙</target></segment></unit></file></xliff>`
+        );
+        copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(projectsDir, "test.ts"));
+        writeFileSync(join(tmp, "tsconfig.json"), "{}");
+        const logSpy = vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+        const warnSpy = vi.spyOn(ImportCmd.prototype, "warn").mockImplementation(() => "");
+
+        await ImportCmd.run([], CLI_ROOT);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          `${join("test", "zh", "A.json")} appears more than once in ${realpathSync(xliffPath)}; the last one is kept`
+        );
+        expect(logSpy).toHaveBeenCalledWith("Imported 1 translation file(s).");
+      });
+    });
+
     describe("dotted project names (#68)", () => {
       /** Projects my and my.app; a bilingual zh file named my.app.xliff. */
       function setupDotted() {

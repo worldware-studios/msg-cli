@@ -8,6 +8,7 @@ import {
   filterXliffPathsByLocale,
   parseXliffFilename,
   processXliffFile,
+  translationFilePaths,
   writeTranslationFiles,
 } from "../lib/import-helpers.js";
 
@@ -87,8 +88,9 @@ export default class Import extends Command {
       this.log(`Filtered to language '${flags.language}'.`);
     }
 
-    let wroteCount = 0;
     let errorCount = 0;
+    // Translation file (relative to l10n/translations) → the XLIFF that wrote it.
+    const writtenBy = new Map<string, string>();
 
     for (const xliffPath of filePaths) {
       // The file's trgLang is its locale; a locale in the file name must agree with it.
@@ -105,10 +107,22 @@ export default class Import extends Command {
         // --project kept both readings of a dotted name (#68); honor the resolved one.
         if (result && flags.project && result.project !== flags.project) continue;
         if (result) {
+          const relPaths = translationFilePaths(result);
+          // Warn before writing; the last source still wins, in sorted path order.
+          const seenInFile = new Set<string>();
+          for (const rel of relPaths) {
+            const earlierFile = writtenBy.get(rel);
+            if (seenInFile.has(rel)) {
+              this.warn(`${rel} appears more than once in ${xliffPath}; the last one is kept`);
+            } else if (earlierFile) {
+              this.warn(`${rel} from ${xliffPath} overwrites the one from ${earlierFile}`);
+            }
+            seenInFile.add(rel);
+          }
           await writeTranslationFiles(translationsDir, result);
-          for (const { title } of result.resources) {
+          for (const [i, { title }] of result.resources.entries()) {
+            writtenBy.set(relPaths[i]!, xliffPath);
             this.log(`  Wrote ${result.project}/${result.locale}/${title}.json`);
-            wroteCount += 1;
           }
         }
       } catch (err) {
@@ -118,8 +132,8 @@ export default class Import extends Command {
       }
     }
 
-    if (wroteCount > 0) {
-      this.log(`Imported ${wroteCount} translation file(s).`);
+    if (writtenBy.size > 0) {
+      this.log(`Imported ${writtenBy.size} translation file(s).`);
     } else if (errorCount === 0) {
       this.log("No translatable XLIFF files found (or all were monolingual / unsupported locale).");
     }

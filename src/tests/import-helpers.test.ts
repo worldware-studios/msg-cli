@@ -21,6 +21,7 @@ import {
   type XmlSpace,
   extractResourceFromXliffFile,
   processXliffFile,
+  translationFilePaths,
   projectFileExists,
   writeTranslationFiles,
   importMsgProject,
@@ -116,6 +117,19 @@ describe("import-helpers", () => {
 
     test("rejects when directory does not exist", async () => {
       await expect(findXliffFilePaths(join(tmp, "nonexistent"))).rejects.toThrow();
+    });
+
+    test("returns full paths sorted, independent of directory listing order (#71)", async () => {
+      // readdir lists "a" before "a.xlf", so a walk alone yields a/x.xliff first;
+      // sorting full paths puts a.xlf first ("." < "/").
+      const dir = join(tmp, "sorted");
+      for (const rel of ["zh/b.xliff", "b.xliff", "a.xlf", "a/x.xliff", "zh/a.xliff", "c/z.xliff"]) {
+        mkdirSync(dirname(join(dir, rel)), { recursive: true });
+        writeFileSync(join(dir, rel), "<xliff/>");
+      }
+      expect(await findXliffFilePaths(dir)).toEqual(
+        ["a.xlf", "a/x.xliff", "b.xliff", "c/z.xliff", "zh/a.xliff", "zh/b.xliff"].map((rel) => join(dir, rel))
+      );
     });
   });
 
@@ -1157,6 +1171,21 @@ one {{一}}
       );
       expect(result).toBeInstanceOf(MsgResource);
       expect(result!.attributes.lang).toBe("zh");
+    });
+  });
+
+  describe("translationFilePaths", () => {
+    test("lists <project>/<locale>/<title>.json for each resource, in order (#71)", () => {
+      expect(
+        translationFilePaths({
+          project: "my.app",
+          locale: "zh",
+          resources: [
+            { title: "B", json: "{}" },
+            { title: "A", json: "{}" },
+          ],
+        })
+      ).toEqual([join("my.app", "zh", "B.json"), join("my.app", "zh", "A.json")]);
     });
   });
 
