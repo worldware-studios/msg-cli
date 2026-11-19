@@ -70,8 +70,7 @@ export function filterXliffPathsByProject(
   filePaths: string[],
   projectName: string
 ): string[] {
-  // xliffDir only feeds the directory locale hint, which the project ignores.
-  return filePaths.filter((p) => parseXliffFilename(p, "").project === projectName);
+  return filePaths.filter((p) => parseXliffFilename(p).project === projectName);
 }
 
 /**
