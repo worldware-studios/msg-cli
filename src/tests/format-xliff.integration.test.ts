@@ -135,6 +135,55 @@ describe("format XLIFF integration", () => {
     expect(byKey.hello!.value).toContain("Hello");
   });
 
+  test("export→import round-trip keeps significant whitespace (#62)", () => {
+    const project = createProject("wsApp");
+    const values: Record<string, string> = {
+      trailing: "Total: ",
+      leading: "  indented",
+      multiline: "line1\n  line2\n",
+      crlf: "line1\r\nline2",
+      cr: "a\rb",
+      tabbed: "a\tb",
+      spaces: "a   b",
+      only: " ",
+      nbsp: "Prix\u00A0:\u00A0",
+      plain: "Hello world",
+    };
+    const resource = MsgResource.create(
+      {
+        title: "Strings",
+        attributes: { lang: "en", dir: "ltr", dnt: false },
+        messages: [
+          ...Object.entries(values).map(([key, value]) => ({
+            key,
+            value,
+            attributes: { format: "NONE" as const },
+          })),
+          {
+            key: "items",
+            value: ".input {$n :number}\n.match $n\none {{{$n} item }}\n* {{{$n} items }}",
+            attributes: { format: "MF2" as const },
+          },
+        ],
+      },
+      project
+    );
+    const exported = serializeResourceGroupsToXliff([{ project: "wsApp", resources: [resource] }])[0]!.xliff;
+    const xliffRoot = (parseXliff20(toBilingualXliff(exported, "zh")) as Record<string, unknown>)
+      .xliff as Record<string, unknown>;
+    const imported = extractResourceFromXliffFile(
+      xliffRoot.file as Record<string, unknown>,
+      "zh",
+      project,
+      ["zh"]
+    );
+    const byKey = Object.fromEntries(imported!.getData(true).messages!.map((m) => [m.key, m.value]));
+
+    expect(Object.fromEntries(Object.keys(values).map((k) => [k, byKey[k]]))).toEqual(values);
+    expect(byKey.items).toContain("one {{{$n} item }}");
+    expect(byKey.items).toContain("* {{{$n} items }}");
+  });
+
   test("MF2 .match export→import round-trip via PGS", () => {
     const project = createProject("mf2App");
     const pluralSrc = `.input {$n :number}

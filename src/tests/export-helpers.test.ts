@@ -711,6 +711,60 @@ one {{One item}}
       expect(xliff).toMatch(/<file [^>]*translate="no"/);
     });
 
+    describe("xml:space (#62)", () => {
+      /** Returns the opening <unit> tag for `key` in the exported XLIFF. */
+      function unitTag(xliff: string, key: string): string {
+        return xliff.match(new RegExp(`<unit [^>]*name="${key}"[^>]*>`))![0];
+      }
+
+      test.each([
+        ["trailing space", "Total: "],
+        ["leading space", "  indented"],
+        ["line break", "line1\nline2"],
+        ["tab", "a\tb"],
+        ["run of spaces", "a  b"],
+        ["whitespace only", " "],
+      ])("marks a unit preserve for %s", (_label, value) => {
+        expect(unitTag(xliffFor(createTestResource("R", "p", [{ key: "k", value }])), "k")).toContain(
+          'xml:space="preserve"'
+        );
+      });
+
+      test.each([
+        ["single spaces", "Hello world"],
+        ["non-breaking spaces", "Prix\u00A0:\u00A0"],
+        ["empty", ""],
+      ])("leaves a unit unmarked for %s", (_label, value) => {
+        expect(unitTag(xliffFor(createTestResource("R", "p", [{ key: "k", value }])), "k")).not.toContain(
+          "xml:space"
+        );
+      });
+
+      test("escapes CR as a character reference so XML parsing cannot turn it into LF", () => {
+        const xliff = xliffFor(createTestResource("R", "p", [{ key: "k", value: "a\r\nb" }]));
+        expect(xliff).toContain("<source>a&#13;\nb</source>");
+      });
+
+      test("checks PGS case bodies, not the multi-line MF2 message", () => {
+        const plain = ".input {$n :number}\n.match $n\none {{{$n} item}}\n* {{{$n} items}}";
+        const spaced = ".input {$n :number}\n.match $n\none {{{$n} item }}\n* {{{$n} items}}";
+        const xliff = xliffFor(
+          createTestResource(
+            "R",
+            "p",
+            [
+              { key: "plain", value: plain },
+              { key: "spaced", value: spaced },
+            ],
+            { projectFormat: "MF2" }
+          )
+        );
+        expect(unitTag(xliff, "plain")).toContain("pgs:switch");
+        expect(unitTag(xliff, "plain")).not.toContain("xml:space");
+        expect(unitTag(xliff, "spaced")).toContain('xml:space="preserve"');
+      });
+    });
+
     test("a group with no resources defaults srcLang to en", () => {
       const [group] = serializeResourceGroupsToXliff([{ project: "empty", resources: [] }]);
       expect(group!.xliff).toContain('srcLang="en"');

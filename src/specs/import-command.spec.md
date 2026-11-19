@@ -46,6 +46,8 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 - It `should write JSON files without notes`
 - It `should keep the user informed of what is doing`
 - It `should preserve existing other resource translations in other languages, when filtering by language or project`
+- It `must keep segment whitespace exactly when the inherited xml:space is preserve, and otherwise trim only leading and trailing XML whitespace (space, tab, CR, LF)`
+- It `must decode numeric character references (e.g. &#13;, &#160;) in segment text`
 
 ### Constraints
 
@@ -149,7 +151,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
         - If there is a `translate` attribute and it is set to `no`,  set the `dnt` property of the object to `true`.
         - If there are any `notes` associated with the `unit`, extract them to `MsgNote` objects using the uppercased category as the note `type`
         - Iterate through each `segment` in the `unit` and get the text for the segment translation for the `target` object.
-        - Reconstruct the complete translated `value` from the collected segments, according to the xliff 2.0 specification rules. Treat segment text as already-decoded; do not pre-escape `\` before JSON serialization. For PGS units, splice segment bodies into the reconstructed message without re-parsing them as MF2 (so `\n`, `\t`, `\{`, and `\\` survive). 
+        - Reconstruct the complete translated `value` from the collected segments, according to the xliff 2.0 specification rules. Treat segment text as already-decoded; do not pre-escape `\` before JSON serialization. Resolve `xml:space` by inheritance (xliff → file → group → unit → `source`/`target`, default `default`). Under `preserve`, keep the text exactly; under `default`, trim only leading and trailing XML whitespace. Notes are not trimmed specially: they are dropped from the written JSON. For PGS units, splice segment bodies into the reconstructed message without re-parsing them as MF2 (so `\n`, `\t`, `\{`, and `\\` survive). 
         - Use the `unit` element's `name` and the complete translated `value` for the unit, together with the `MsgAttribute` object and `MsgNote` array, to programmatically add a new message to the `MsgResource` created earlier.
     - Use MsgResource.toJSON(true) to get a serialized JSON string without notes.
     - Create a directory named after the project name inside `l10n/translations`, if it does not already exist
@@ -209,10 +211,20 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 
 #### Edge Cases
 
-- _[Scenario]_
-  - Given:
-  - When:
-  - Then:
+- _[Preserved whitespace]_
+  - Given: a unit with `xml:space="preserve"` (set on it or inherited from its file, group, or the xliff root) whose target is `"Total: "`
+  - When: the user runs `import`
+  - Then: the message value is `"Total: "`
+
+- _[Default whitespace]_
+  - Given: a unit without `xml:space` whose target is `"  Prix\u00A0:\u00A0  "`
+  - When: the user runs `import`
+  - Then: the message value is `"Prix\u00A0:\u00A0"` (ASCII spaces trimmed, non-breaking spaces kept)
+
+- _[Closer xml:space wins]_
+  - Given: a unit with `xml:space="preserve"` whose `<target>` has `xml:space="default"`
+  - When: the user runs `import`
+  - Then: the target text is trimmed
 
 #### Errors
 

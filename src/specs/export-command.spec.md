@@ -45,6 +45,8 @@ Each unit’s resolved message `format` (`NONE` / `MF1` / `MF2`) is written as `
 - It `should error if a MsgResource object cannot be imported`
 - It `should exit with a message if no MsgResource files are found`
 - It `should output a valid XLIFF 2.0 file`
+- It `must mark a unit with xml:space="preserve" when its source text has leading or trailing whitespace, a tab or line break, or a run of two or more spaces` (for PGS units, any case body; not the multi-line MF2 message)
+- It `must write carriage returns as &#13; so XML parsing does not normalize them to line feeds`
 - It `should console log each major step in the process to keep the user informed`
 
 ### Constraints
@@ -209,6 +211,16 @@ Each unit’s resolved message `format` (`NONE` / `MF1` / `MF2`) is written as `
   - Given: `i18n/resources` contains multiple MsgResource files that all belong to the same project
   - When: the user runs `export`
   - Then: one XLIFF file is produced for that project containing all messages from those resources, and the file is valid XLIFF 2.0
+
+- _[Significant whitespace]_
+  - Given: messages `"Total: "`, `"  indented"`, `"line1\nline2"`, and `"Hello world"`
+  - When: the user runs `export`
+  - Then: the first three units carry `xml:space="preserve"`; `"Hello world"` has no `xml:space`
+
+- _[Carriage return]_
+  - Given: a message `"a\r\nb"`
+  - When: the user runs `export`
+  - Then: the unit's `<source>` contains `a&#13;` followed by a line feed and `b`, and importing the translated file restores `"a\r\nb"`
 
 - _[l10n/xliff directory does not exist]_
   - Given: a project with valid MsgResource files in `i18n/resources` but no `l10n/xliff` directory

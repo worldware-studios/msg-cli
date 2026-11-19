@@ -172,7 +172,17 @@ function escapeXml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replace(/'/g, "&apos;")
+    // XML parsers normalize a literal CR (and CRLF) to LF; a reference keeps it.
+    .replace(/\r/g, "&#13;");
+}
+
+/**
+ * Whether text has whitespace that XLIFF `xml:space="default"` processing may alter:
+ * leading/trailing whitespace, tabs or line breaks, or runs of spaces.
+ */
+function needsPreservedSpace(text: string): boolean {
+  return /^[ \t\r\n]|[ \t\r\n]$|[\t\r\n]| {2}/.test(text);
 }
 
 /**
@@ -309,6 +319,14 @@ function resourceGroupToXliff22(group: ResourceGroup): string {
       const pgsExport = pgsExportForFormat(msgFormat, msg.value);
       if (pgsExport) {
         msgAttrs.push(`pgs:switch="${escapeXml(pgsExport.switchAttr)}"`);
+      }
+      // Check what is written to <source>: for PGS that is each case body, not the
+      // multi-line MF2 message (whose line breaks are syntax, not content).
+      const sourceTexts = pgsExport
+        ? pgsExport.segments.map((seg) => seg.sourcePattern)
+        : [msg.value];
+      if (sourceTexts.some(needsPreservedSpace)) {
+        msgAttrs.push('xml:space="preserve"');
       }
 
       parts.push(`    <unit ${msgAttrs.join(" ")}>`);

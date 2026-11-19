@@ -19,6 +19,7 @@ import {
   parseXliffFilename,
   xliffDirSegments,
   parseXliff20,
+  type XmlSpace,
   extractResourceFromXliffFile,
   processXliffFile,
   writeTranslationFiles,
@@ -802,6 +803,16 @@ one {{一}}
         expect(importTarget('a<cp hex="110000"/><cp hex="zz"/><cp/>b')).toBe("a\uFFFD\uFFFD\uFFFDb");
       });
 
+      test("decodes numeric character references in text and attributes (#62)", () => {
+        expect(importTarget('a&#160;b&#x263A;&#13;c <ph id="1" equiv="&#123;n&#x7D;"/> &amp;#13;')).toBe(
+          "a\u00A0b\u263A\rc {n} &#13;"
+        );
+      });
+
+      test("decodes each reference once, so escaped references stay literal (#62)", () => {
+        expect(importTarget("&amp;lt; &amp;nbsp; &#38;#13; &amp;amp;")).toBe("&lt; &nbsp; &#13; &amp;");
+      });
+
       test("keeps CDATA text in place", () => {
         expect(importTarget("a <![CDATA[<b> & c]]> d")).toBe("a <b> & c d");
       });
@@ -827,6 +838,96 @@ one {{一}}
       test("trims leading and trailing whitespace as plain-text targets always have", () => {
         expect(importTarget('  Hi <pc id="1">there</pc>  ')).toBe("Hi there");
         expect(importTarget("  plain  ")).toBe("plain");
+      });
+    });
+
+    describe("xml:space (#62)", () => {
+      /** Parses `<file ...>` content into a key → imported value map. */
+      function importFile(
+        fileInner: string,
+        opts: { fileAttrs?: string; xliffSpace?: XmlSpace } = {}
+      ): Record<string, string> {
+        const xml =
+          '<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh">' +
+          `<file id="f1" original="T.json" ${opts.fileAttrs ?? ""}>${fileInner}</file></xliff>`;
+        const xliff = (parseXliff20(xml) as Record<string, unknown>).xliff as Record<string, unknown>;
+        const result = extractResourceFromXliffFile(
+          xliff.file as Record<string, unknown>,
+          "zh",
+          project,
+          ["zh"],
+          opts.xliffSpace
+        );
+        return Object.fromEntries(result!.getData(true).messages!.map((m) => [m.key, m.value]));
+      }
+      const unit = (name: string, target: string, attrs = "", targetAttrs = "") =>
+        `<unit id="${name}" name="${name}" ${attrs}><segment><source>x</source><target ${targetAttrs}>${target}</target></segment></unit>`;
+
+      test("default trims leading and trailing XML whitespace only", () => {
+        expect(
+          importFile(unit("a", "  Total:  ") + unit("b", "Prix\u00A0:\u00A0") + unit("c", "\n\tLine\n"))
+        ).toEqual({ a: "Total:", b: "Prix\u00A0:\u00A0", c: "Line" });
+      });
+
+      test("unit preserve keeps leading, trailing, internal, and whitespace-only content", () => {
+        const p = 'xml:space="preserve"';
+        expect(
+          importFile(
+            unit("a", "Total: ", p) +
+              unit("b", "  indented", p) +
+              unit("c", "line1\n  line2\n", p) +
+              unit("d", " ", p)
+          )
+        ).toEqual({ a: "Total: ", b: "  indented", c: "line1\n  line2\n", d: " " });
+      });
+
+      test("preserve keeps whitespace around inline elements", () => {
+        expect(importFile(unit("a", ' <pc id="1">bold</pc> ', 'xml:space="preserve"'))).toEqual({ a: " bold " });
+      });
+
+      test("target xml:space overrides the unit's", () => {
+        expect(
+          importFile(
+            unit("a", " t ", "", 'xml:space="preserve"') +
+              unit("b", " t ", 'xml:space="preserve"', 'xml:space="default"')
+          )
+        ).toEqual({ a: " t ", b: "t" });
+      });
+
+      test("source xml:space applies when falling back to source", () => {
+        expect(
+          importFile('<unit id="a" name="a"><segment><source xml:space="preserve"> s </source></segment></unit>')
+        ).toEqual({ a: " s " });
+      });
+
+      test("inherits from file, group, and nested group, and a closer default overrides", () => {
+        expect(
+          importFile(
+            unit("a", " f ") +
+              '<group id="g1" xml:space="default">' +
+              unit("b", " g ") +
+              '<group id="g2" xml:space="preserve">' +
+              unit("c", " n ") +
+              "</group></group>",
+            { fileAttrs: 'xml:space="preserve"' }
+          )
+        ).toEqual({ a: " f ", b: "g", c: " n " });
+      });
+
+      test("inherits from the xliff root and ignores invalid values", () => {
+        expect(importFile(unit("a", " r "), { xliffSpace: "preserve" })).toEqual({ a: " r " });
+        expect(importFile(unit("a", " r ", 'xml:space="bogus"'), { xliffSpace: "preserve" })).toEqual({ a: " r " });
+        expect(importFile(unit("a", " r ", 'xml:space="bogus"'))).toEqual({ a: "r" });
+      });
+
+      test("preserve keeps whitespace in PGS case bodies", () => {
+        const value = importFile(
+          '<unit id="a" name="a" type="msg:mf2" pgs:switch="plural:n" xml:space="preserve">' +
+            '<segment pgs:case="one"><source>x</source><target>{$n} item </target></segment>' +
+            '<segment pgs:case="other"><source>x</source><target>{$n} items </target></segment></unit>'
+        ).a;
+        expect(value).toContain("one {{{$n} item }}");
+        expect(value).toContain("* {{{$n} items }}");
       });
     });
 
@@ -1091,6 +1192,18 @@ one {{一}}
 
     afterEach(() => {
       rmSync(tmp, { recursive: true, force: true });
+    });
+
+    test("passes xml:space from the xliff root down to units (#62)", async () => {
+      const xliffPath = join(tmp, "xliff", "space.zh.xliff");
+      writeFileSync(
+        xliffPath,
+        '<?xml version="1.0"?><xliff xmlns="urn:oasis:names:tc:xliff:document:2.0" version="2.0" srcLang="en" trgLang="zh" xml:space="preserve">' +
+          '<file id="f1" original="Space.json"><unit id="k" name="k"><segment><source>x</source><target>合计： </target></segment></unit></file></xliff>'
+      );
+      const result = await processXliffFile(xliffPath, join(tmp, "projects"), "test", "zh");
+      const json = JSON.parse(result!.resources[0]!.json) as { messages: { value: string }[] };
+      expect(json.messages[0]!.value).toBe("合计： ");
     });
 
     test("returns ImportResult for valid bilingual XLIFF", async () => {
