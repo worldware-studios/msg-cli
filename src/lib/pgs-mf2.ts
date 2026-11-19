@@ -3,7 +3,7 @@
  * (`pgs:switch` / `pgs:case`, urn:oasis:names:tc:xliff:pgs:1.0).
  *
  * Ordinal vs cardinal :number uses the `select` option passed to PluralRules
- * (`select=ordinal` in MF2 syntax → options Map key `select`, literal `ordinal`).
+ * (`select=ordinal` in MF2 syntax → options key `select`, literal `ordinal`).
  */
 
 import {
@@ -80,18 +80,16 @@ function getFunctionName(expr: {
 }
 
 function getOption(
-  opts: Map<string, unknown> | Record<string, unknown> | undefined,
+  opts: Record<string, unknown> | undefined,
   key: string
 ): unknown {
-  if (!opts) return undefined;
-  if (opts instanceof Map) return opts.get(key);
-  return opts[key];
+  return opts?.[key];
 }
 
 function getSelectOptionOrdinal(expr: {
   functionRef?: {
     name?: string;
-    options?: Map<string, unknown> | Record<string, unknown>;
+    options?: Record<string, unknown>;
   };
 }): boolean {
   const sel = getOption(expr.functionRef?.options, "select");
@@ -144,7 +142,7 @@ export function classifySelectMessageForPgs(
       type?: string;
       functionRef?: {
         name?: string;
-        options?: Map<string, unknown> | Record<string, unknown>;
+        options?: Record<string, unknown>;
       };
     };
     if (expr.type !== "expression") return null;
@@ -327,9 +325,9 @@ export function pgsImportToSelectMessage(
         },
       });
     } else if (kind === "ordinal") {
-      const opts = new Map([
-        ["select", { type: "literal", value: "ordinal" }],
-      ]);
+      // messageformat's data model stores options as a plain object;
+      // stringifyMessage ignores anything else (e.g. a Map).
+      const opts = { select: { type: "literal", value: "ordinal" } };
       declarations.push({
         type: "input",
         name,
