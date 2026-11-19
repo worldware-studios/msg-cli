@@ -70,7 +70,7 @@ export default class Import extends Command {
     this.log(`Found ${filePaths.length} XLIFF file(s).`);
 
     if (flags.project) {
-      filePaths = filterXliffPathsByProject(filePaths, flags.project, xliffDir);
+      filePaths = filterXliffPathsByProject(filePaths, flags.project);
       if (filePaths.length === 0) {
         this.log(`No XLIFF files found for project '${flags.project}'. Nothing to import.`);
         return;
