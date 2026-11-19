@@ -221,8 +221,15 @@ export type XmlSpace = "default" | "preserve";
  * Returns the element's own `xml:space` when it is valid, otherwise the inherited value
  * (XLIFF 2 §4.3.2.2: `xml:space` is inherited from the parent element).
  */
-function resolveXmlSpace(_el: unknown, inherited: XmlSpace): XmlSpace {
-  return inherited;
+function resolveXmlSpace(el: unknown, inherited: XmlSpace): XmlSpace {
+  const own =
+    el && typeof el === "object" ? (el as Record<string, unknown>)["@_xml:space"] : undefined;
+  return own === "preserve" || own === "default" ? own : inherited;
+}
+
+/** Trims XML whitespace (space, tab, CR, LF) only; `String.prototype.trim` would also drop NBSP etc. */
+function trimXmlWhitespace(text: string): string {
+  return text.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
 }
 
 /** Extracts text from segment source/target, handling inline elements per XLIFF 2.0.
@@ -240,8 +247,9 @@ function extractSegmentText(segment: unknown, space: XmlSpace): string {
       : content;
   if (typeof raw !== "string" || raw === "") return "";
   const [root] = inlineContentParser.parse(`<c>${raw}</c>`) as OrderedNode[];
-  // Trim the ends only, matching how plain-text targets were always imported.
-  return extractInlineText(root!.c as OrderedNode[]).trim();
+  const text = extractInlineText(root!.c as OrderedNode[]);
+  // Under `default`, trim the ends as plain-text targets always were (XLIFF 2 §4.7.5 allows it).
+  return resolveXmlSpace(content, space) === "preserve" ? text : trimXmlWhitespace(text);
 }
 
 /** Decodes a `<cp hex="..">` value, substituting U+FFFD when it is not a valid code point. */
