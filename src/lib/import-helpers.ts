@@ -106,8 +106,9 @@ const LOCALE_PATTERN = /^[a-zA-Z]{2,3}(-[a-zA-Z0-9]+)*$/;
  * xliffDir may also indicate project/locale (e.g. xliff/zh/project.xliff).
  * @param filePath - Absolute path to XLIFF file
  * @param xliffDir - Absolute path to the xliff directory the file was found in
- * @returns Object with project and locale (locale may be undefined for monolingual);
- *   `filenameLocale` is the locale from the file name alone (`project.locale.xliff`)
+ * @returns Object with project, a path-based locale hint, and `filenameLocale`
+ *   (the locale from the file name alone, `project.locale.xliff`). Import takes
+ *   the locale from the file's `trgLang` and checks only `filenameLocale` against it.
  */
 export function parseXliffFilename(filePath: string, xliffDir: string): {
   project: string;

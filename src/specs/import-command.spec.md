@@ -53,6 +53,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 ### Constraints
 
 - It `should not process monolingual xliff 2.0 files with no trgLang`
+- It `must use the file's trgLang as its locale, and skip with a warning a file whose file name locale differs from trgLang (case-insensitive)`
 
 ## 5. Design
 
@@ -132,12 +133,12 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - If `locale` is passed to the `--language` flag, filter the array to those paths that have `.[locale].` in the filename or where `locale` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
 4. **Extract translations**
   - Iterate through the array of filtered file paths to process them.
-    - Determine the project and locale from the file name (`project.locale.xliff` or `project.xliff`). If the file name has no locale, use the first locale-shaped directory under `l10n/xliff` (e.g. `l10n/xliff/zh/project.xliff`); never use directories above `l10n/xliff`, since system paths such as `/var` or `/tmp` look like locale codes.
-    - If no locale is found, the file is monolingual: warn `Skipping monolingual file (no target locale): <path>` and continue to the next file path.
+    - Determine the project from the file name (`project.locale.xliff` or `project.xliff`), and note the file name locale, if any.
+    - Read and parse the xliff to an javascript object using `fast-xml-parser`
+    - If there is no `trgLang` attribute on the xliff object, the file is monolingual: warn `Skipping monolingual file (no target locale): <path>` and continue to the next file path.
+    - `trgLang` is the file's locale. If the file name has a locale that differs from `trgLang` (compared case-insensitively), warn `Skipping <path>: file name locale '<locale>' does not match trgLang '<trgLang>'` and continue to the next file path. Directory names are not checked against `trgLang`: a directory such as `l10n/xliff/app/` would look like a locale code.
     - Use the file name (without the locale code) to dynamically import the `MsgProject` object from the file with the same name in the `i18n/projects` directory
     - Get the array of target locales from the project, which correspond to the keys in the project's `locales.targets` object.
-    - Read and parse the xliff to an javascript object using `fast-xml-parser`
-    - If there is no `trgLang` attribute on the xliff object, the file is monolingual. Continue to the next file path.
     - If `trgLang` is not in the target locales array, the language is not supported. Continue to the next file path.
     - Iterate through the file objects in the parsed xliff object in order to create new translated `MsgResource` objects.
       - Use the `original` attribute of the file object to extract the `title` from the file name. 
@@ -156,7 +157,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
         - Use the `unit` element's `name` and the complete translated `value` for the unit, together with the `MsgAttribute` object and `MsgNote` array, to programmatically add a new message to the `MsgResource` created earlier.
     - Use MsgResource.toJSON(true) to get a serialized JSON string without notes.
     - Create a directory named after the project name inside `l10n/translations`, if it does not already exist
-    - Create a directory inside the directory named after the project name that is named after the locale code, if it does not already exist
+    - Create a directory inside the directory named after the project name that is named after the locale (`trgLang`), if it does not already exist
     - Write the serialized JSON string to a file inside the locale code directory. The file name should be the resource `title`, and the extension should be `.json`
 
 
@@ -221,6 +222,16 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - Given: a unit without `xml:space` whose target is `"  Prix\u00A0:\u00A0  "`
   - When: the user runs `import`
   - Then: the message value is `"Prix\u00A0:\u00A0"` (ASCII spaces trimmed, non-breaking spaces kept)
+
+- _[File name locale disagrees with trgLang]_
+  - Given: `l10n/xliff/myApp.fr.xliff` with `trgLang="de"`
+  - When: the user runs `import`
+  - Then: the file is skipped with the warning `Skipping <path>: file name locale 'fr' does not match trgLang 'de'`, and nothing is written
+
+- _[Locale from trgLang, not the directory]_
+  - Given: `l10n/xliff/app/zh/myApp.xliff` (or `l10n/xliff/myApp.xliff`) with `trgLang="zh"`
+  - When: the user runs `import`
+  - Then: translations are written to `l10n/translations/myApp/zh/`
 
 - _[Inline elements keep their order]_
   - Given: a target `Hello <pc id="1">bold</pc> and <pc id="2">more</pc>!`
