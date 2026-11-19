@@ -70,6 +70,22 @@ one {{You won {$p}st place}}
     expect(exp!.switchAttr).toBe("ordinal:p");
   });
 
+  test("ordinal round-trips export → import unchanged", () => {
+    const src = `.input {$p :number select=ordinal}
+.match $p
+one {{You won {$p}st place}}
+* {{You won {$p}th place}}`;
+    const exp = selectMessageToPgsExport(src);
+    expect(exp).not.toBeNull();
+    const back = pgsImportToSelectMessage(
+      exp!.switchAttr,
+      exp!.segments.map((s) => ({ caseAttr: s.caseAttr, body: s.sourcePattern }))
+    );
+    expect(back).not.toBeNull();
+    expect(back).toContain("select=ordinal");
+    expect(messagesStructurallyEqual(src, back!)).toBe(true);
+  });
+
   test("gender-like string selector maps to gender", () => {
     const src = `.input {$g :string}
 .match $g
@@ -135,7 +151,7 @@ masculine {{His party}}
       ]);
       expect(
         classifySelectMessageForPgs(
-          selectOver(numberExpr(new Map([["select", { type: "variable", name: "v" }]])))
+          selectOver(numberExpr({ select: { type: "variable", name: "v" } }))
         )
       ).toEqual([{ kind: "plural", name: "x" }]);
     });
@@ -204,10 +220,7 @@ masculine {{His party}}
       expect(rebuilt).toContain("* {{{$n}th}}");
     });
 
-    // Known bug: the ordinal option is built as a Map, but messageformat
-    // stores options as a plain object, so stringifyMessage drops it and the
-    // ordinal imports as a plural. Remove .fails once fixed (#48).
-    test.fails("pgsImportToSelectMessage keeps select=ordinal (known bug)", () => {
+    test("pgsImportToSelectMessage keeps select=ordinal", () => {
       expect(pgsImportToSelectMessage("ordinal:n", ordinalSegments)).toContain(
         "select=ordinal"
       );
