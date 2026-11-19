@@ -48,6 +48,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 - It `should preserve existing other resource translations in other languages, when filtering by language or project`
 - It `must keep segment whitespace exactly when the inherited xml:space is preserve, and otherwise trim only leading and trailing XML whitespace (space, tab, CR, LF)`
 - It `must decode numeric character references (e.g. &#13;, &#160;) in segment text`
+- It `must rebuild segment text from inline elements in document order: pc, mrk, and unrecognized elements contribute their content; ph, sc, and ec contribute equiv, else disp, else nothing; cp contributes its code point (U+FFFD if invalid); sm and em contribute nothing`
 
 ### Constraints
 
@@ -151,7 +152,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
         - If there is a `translate` attribute and it is set to `no`,  set the `dnt` property of the object to `true`.
         - If there are any `notes` associated with the `unit`, extract them to `MsgNote` objects using the uppercased category as the note `type`
         - Iterate through each `segment` in the `unit` and get the text for the segment translation for the `target` object.
-        - Reconstruct the complete translated `value` from the collected segments, according to the xliff 2.0 specification rules. Treat segment text as already-decoded; do not pre-escape `\` before JSON serialization. Resolve `xml:space` by inheritance (xliff → file → group → unit → `source`/`target`, default `default`). Under `preserve`, keep the text exactly; under `default`, trim only leading and trailing XML whitespace. Notes are not trimmed specially: they are dropped from the written JSON. For PGS units, splice segment bodies into the reconstructed message without re-parsing them as MF2 (so `\n`, `\t`, `\{`, and `\\` survive). 
+        - Reconstruct the complete translated `value` from the collected segments, according to the xliff 2.0 specification rules. Treat segment text as already-decoded; do not pre-escape `\` before JSON serialization. Rebuild text from inline elements (`pc`, `mrk`, `ph`, `sc`, `ec`, `cp`, `sm`, `em`) in document order, per the inline element requirement above. Resolve `xml:space` by inheritance (xliff → file → group → unit → `source`/`target`, default `default`). Under `preserve`, keep the text exactly; under `default`, trim only leading and trailing XML whitespace. Notes are not trimmed specially: they are dropped from the written JSON. For PGS units, splice segment bodies into the reconstructed message without re-parsing them as MF2 (so `\n`, `\t`, `\{`, and `\\` survive). 
         - Use the `unit` element's `name` and the complete translated `value` for the unit, together with the `MsgAttribute` object and `MsgNote` array, to programmatically add a new message to the `MsgResource` created earlier.
     - Use MsgResource.toJSON(true) to get a serialized JSON string without notes.
     - Create a directory named after the project name inside `l10n/translations`, if it does not already exist
@@ -220,6 +221,16 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - Given: a unit without `xml:space` whose target is `"  Prix\u00A0:\u00A0  "`
   - When: the user runs `import`
   - Then: the message value is `"Prix\u00A0:\u00A0"` (ASCII spaces trimmed, non-breaking spaces kept)
+
+- _[Inline elements keep their order]_
+  - Given: a target `Hello <pc id="1">bold</pc> and <pc id="2">more</pc>!`
+  - When: the user runs `import`
+  - Then: the message value is `Hello bold and more!`
+
+- _[Placeholder equivalents]_
+  - Given: a target `Hi <ph id="1" equiv="{name}"/>.`
+  - When: the user runs `import`
+  - Then: the message value is `Hi {name}.`; a `ph` with only `disp` uses that, and one with neither contributes nothing
 
 - _[Closer xml:space wins]_
   - Given: a unit with `xml:space="preserve"` whose `<target>` has `xml:space="default"`
