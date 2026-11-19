@@ -21,7 +21,9 @@ Scale the ceremony to the work:
   bug fixes, docs-only edits). Collapse the process to: phase 1 (verify issue),
   a combined implement-with-tests step (phases 3-4), phase 6 checks, and phase
   10 (PR). Skip mandatory internet research (phase 2) and separate
-  optimize/refactor phases unless they prove necessary.
+  optimize/refactor phases unless they prove necessary. If the change alters
+  command behavior, still update `README.md` and `src/specs/` (Definition of
+  done item 5 in `project/rules.md`) before phase 10.
 
 State which track you are using at the start and let the user override it.
 
@@ -52,6 +54,10 @@ keep momentum on the lightweight track.
 ### 2. Research, analyze, and select the best approach.
 1. Research different approaches to the issue (internet + codebase). On the
    lightweight track this may be skipped if the approach is obvious.
+   When the approach depends on how a parser or serializer handles input
+   (whitespace, entities, escaping, normalization), prototype a round-trip
+   through the real code before proposing it, so surprises surface here rather
+   than in phase 6.
 2. Analyze and rank approaches by simplicity and time/space complexity.
 3. Evaluate each approach against the rules in `project/rules.md`.
 4. Select the highest-ranked approach that adheres to the rules.

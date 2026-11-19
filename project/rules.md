@@ -80,6 +80,9 @@ that phase pass.
   before creating the work branch.
 - Name the work branch `<repo>-<issue number>` (e.g. `msg-cli-42`).
 - Keep one branch per issue.
+- If an issue builds on code from an unmerged PR, ask the user whether to wait
+  for that PR to merge (then branch off `main`) or to stack: branch off the
+  PR's branch, open the PR against it, and retarget to `main` once it merges.
 
 ## Commits
 
