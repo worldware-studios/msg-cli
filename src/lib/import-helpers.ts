@@ -60,8 +60,9 @@ export function xliffDirSegments(xliffDir: string, filePath: string): string[] {
 /**
  * Filters XLIFF file paths by project name.
  * Keeps paths whose file name parses to exactly that project (`project.xliff`,
- * `project.locale.xliff`), wherever they sit. This is the project import loads,
- * so directories are not matched: `xliff/app/zh/file.xliff` imports as `file`.
+ * `project.locale.xliff`), or whose whole file name stem is the project (a
+ * dotted name such as `my.app.xliff`), wherever they sit. Directories are not
+ * matched: `xliff/app/zh/file.xliff` imports as `file`.
  * @param filePaths - Array of absolute XLIFF file paths
  * @param projectName - Project name to filter by
  * @returns Filtered array of paths
@@ -70,7 +71,12 @@ export function filterXliffPathsByProject(
   filePaths: string[],
   projectName: string
 ): string[] {
-  return filePaths.filter((p) => parseXliffFilename(p).project === projectName);
+  return filePaths.filter((p) => {
+    // `x.y.xliff` may be project `x` (locale `y`) or project `x.y` (#68); keep
+    // either reading here; import drops a file that resolves to another project.
+    const stem = basename(p).replace(/\.(?:xliff|xlf)$/i, "");
+    return parseXliffFilename(p).project === projectName || stem === projectName;
+  });
 }
 
 /**
@@ -155,8 +161,8 @@ export async function importMsgProject(
  * @param projectsDir - Absolute path to i18n/projects
  * @param projectName - Project name (file name without extension)
  */
-export function projectFileExists(_projectsDir: string, _projectName: string): boolean {
-  return false;
+export function projectFileExists(projectsDir: string, projectName: string): boolean {
+  return [".ts", ".js"].some((ext) => existsSync(join(projectsDir, `${projectName}${ext}`)));
 }
 
 const xmlParser = new XMLParser({
