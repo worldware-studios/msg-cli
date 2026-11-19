@@ -809,6 +809,10 @@ one {{一}}
         );
       });
 
+      test("decodes each reference once, so escaped references stay literal (#62)", () => {
+        expect(importTarget("&amp;lt; &amp;nbsp; &#38;#13; &amp;amp;")).toBe("&lt; &nbsp; &#13; &amp;");
+      });
+
       test("keeps CDATA text in place", () => {
         expect(importTarget("a <![CDATA[<b> & c]]> d")).toBe("a <b> & c d");
       });
