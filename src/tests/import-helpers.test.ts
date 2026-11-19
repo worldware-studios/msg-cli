@@ -122,37 +122,40 @@ describe("import-helpers", () => {
   describe("filterXliffPathsByProject", () => {
     test("returns empty when no paths match", () => {
       const paths = ["/a/b/myapp.fr.xliff", "/a/b/other.de.xliff"];
-      const result = filterXliffPathsByProject(paths, "proj", "/a/b");
-      expect(result).toEqual([]);
+      expect(filterXliffPathsByProject(paths, "proj")).toEqual([]);
     });
 
-    test("filters by filename prefix only (no path match)", () => {
-      const paths = ["/a/b/myapp.fr.xliff"];
-      const result = filterXliffPathsByProject(paths, "myapp", "/a/b");
-      expect(result).toHaveLength(1);
-    });
-
-    test("filters by filename prefix", () => {
+    test("keeps files whose parsed project equals the project name", () => {
       const paths = [
         "/a/b/myapp.fr.xliff",
         "/a/b/myapp.de.xliff",
+        "/a/b/myapp.xliff",
         "/a/b/other.de.xliff",
       ];
-      const result = filterXliffPathsByProject(paths, "myapp", "/a/b");
-      expect(result).toHaveLength(2);
+      expect(filterXliffPathsByProject(paths, "myapp")).toEqual([
+        "/a/b/myapp.fr.xliff",
+        "/a/b/myapp.de.xliff",
+        "/a/b/myapp.xliff",
+      ]);
     });
 
-    test("filters by project as directory in path", () => {
-      const paths = ["/xliff/myapp/fr/file.xliff", "/xliff/other/de/file.xliff"];
-      const result = filterXliffPathsByProject(paths, "myapp", "/xliff");
-      expect(result).toHaveLength(1);
-      expect(result[0]).toContain("myapp");
+    test("drops projects that only share a prefix (#56)", () => {
+      const paths = ["/x/app.zh.xliff", "/x/app.xliff", "/x/application.zh.xliff", "/x/apps.fr.xliff"];
+      expect(filterXliffPathsByProject(paths, "app")).toEqual(["/x/app.zh.xliff", "/x/app.xliff"]);
     });
 
-    test("ignores a project-named directory above the xliff root (#49)", () => {
-      const paths = ["/srv/myapp/l10n/xliff/other.zh.xliff"];
-      const result = filterXliffPathsByProject(paths, "myapp", "/srv/myapp/l10n/xliff");
-      expect(result).toEqual([]);
+    test("matches by file name wherever the file sits, not by directory (#56)", () => {
+      const paths = [
+        "/xliff/zh/myapp.xliff",
+        "/xliff/vendor/zh/myapp.xlf",
+        // Imports as project "file", so --project myapp must not select it.
+        "/xliff/myapp/fr/file.xliff",
+        "/srv/myapp/l10n/xliff/other.zh.xliff",
+      ];
+      expect(filterXliffPathsByProject(paths, "myapp")).toEqual([
+        "/xliff/zh/myapp.xliff",
+        "/xliff/vendor/zh/myapp.xlf",
+      ]);
     });
   });
 

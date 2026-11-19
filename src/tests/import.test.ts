@@ -154,6 +154,22 @@ describe("Import command", () => {
       expect(existsSync(outputPath)).toBe(true);
     });
 
+    test("--project does not select other projects that share its prefix (#56)", async () => {
+      const { xliffDir, translationsDir, projectsDir } = setupPackageWithI18nAndL10n(tmp);
+      for (const name of ["test", "testing"]) {
+        copyFileSync(join(FIXTURES_XLIFF, "test.zh.xliff"), join(xliffDir, `${name}.zh.xliff`));
+        copyFileSync(join(FIXTURES_PROJECTS, "test.ts"), join(projectsDir, `${name}.ts`));
+      }
+      writeFileSync(join(tmp, "tsconfig.json"), "{}");
+      vi.spyOn(ImportCmd.prototype, "log").mockImplementation(() => {});
+
+      await ImportCmd.run(["--project", "test"], CLI_ROOT);
+
+      expect(existsSync(join(translationsDir, "test", "zh", "Example.json"))).toBe(true);
+      expect(existsSync(join(translationsDir, "testing"))).toBe(false);
+      vi.restoreAllMocks();
+    });
+
     test("import filtered to single language", async () => {
       const { xliffDir, translationsDir, projectsDir } =
         setupPackageWithI18nAndL10n(tmp);

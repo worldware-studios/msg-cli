@@ -59,22 +59,18 @@ export function xliffDirSegments(xliffDir: string, filePath: string): string[] {
 
 /**
  * Filters XLIFF file paths by project name.
- * Keeps paths where filename starts with projectName or projectName is a directory under xliffDir.
+ * Keeps paths whose file name parses to exactly that project (`project.xliff`,
+ * `project.locale.xliff`), wherever they sit. This is the project import loads,
+ * so directories are not matched: `xliff/app/zh/file.xliff` imports as `file`.
  * @param filePaths - Array of absolute XLIFF file paths
  * @param projectName - Project name to filter by
- * @param xliffDir - Absolute path to the xliff directory the paths were found in
  * @returns Filtered array of paths
  */
 export function filterXliffPathsByProject(
   filePaths: string[],
-  projectName: string,
-  xliffDir: string
+  projectName: string
 ): string[] {
-  return filePaths.filter((p) => {
-    const filename = basename(p);
-    if (filename.startsWith(projectName)) return true;
-    return xliffDirSegments(xliffDir, p).some((part) => part === projectName);
-  });
+  return filePaths.filter((p) => parseXliffFilename(p).project === projectName);
 }
 
 /**

@@ -128,7 +128,7 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
 1. **Find xliff 2.0 files.** 
   - Recursively find all the xliff files in the `l10n/xliff` directory. Return an array of absolute paths.
 2. **Filter files by project name (optional).** 
-  - If `projectName` is passed to the `--project` flag, filter the array of paths to those where the filename starts with `projectName` or `projectName` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
+  - If `projectName` is passed to the `--project` flag, filter the array of paths to those whose file name parses to exactly `projectName` (`projectName.xliff` or `projectName.locale.xliff`, in any directory). This is the project step 4 loads, so directories are not matched, and names that only share a prefix (`projectName` vs `projectNameX`) are not selected.
 3. **Filter files by locale (optional).**
   - If `locale` is passed to the `--language` flag, filter the array to those paths that have `.[locale].` in the filename or where `locale` is the name of a directory under `l10n/xliff`. Directories above `l10n/xliff` are not considered.
 4. **Extract translations**
@@ -212,6 +212,11 @@ Unit `type` values `msg:NONE` / `msg:MF1` / `msg:MF2` (or bare format tokens) ar
   - Then:
 
 #### Edge Cases
+
+- _[--project with a shared prefix]_
+  - Given: `l10n/xliff/app.zh.xliff` and `l10n/xliff/application.zh.xliff`
+  - When: the user runs `import --project app`
+  - Then: only `app.zh.xliff` is imported
 
 - _[Preserved whitespace]_
   - Given: a unit with `xml:space="preserve"` (set on it or inherited from its file, group, or the xliff root) whose target is `"Total: "`
