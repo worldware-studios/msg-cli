@@ -27,11 +27,14 @@ You need the issue number. If it isn't above and the user didn't give one, ask.
 Use the `gh` CLI
 for all GitHub work (`gh issue view <n>`, `gh pr create`, `gh pr ready`, etc.).
 
-**Confirm the repo first.** This skill belongs to the repo that contains its
-base directory (shown above). Run every `git` and `gh` command from that repo
-root, even if your working directory is a sibling repo. If the same issue
-number also exists in a sibling repo you have open, name the repo and issue
-title you picked so the user can correct you before phase 1.
+**Confirm the repo first.** If the invocation names a repo (for example
+`msg #83`), work in that repo and follow its `project/` docs, even when this
+copy of the skill lives in a sibling repo, and tell the user which repo you
+picked. Otherwise, use the repo that contains this skill's base directory
+(shown above). Run every `git` and `gh` command from the chosen repo's root,
+even if your working directory is a sibling repo. If the same issue number
+also exists in a sibling repo you have open, name the repo and issue title you
+picked so the user can correct you before phase 1.
 
 ## Workflow at a glance
 
